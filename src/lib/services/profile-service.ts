@@ -1,0 +1,38 @@
+import { achievementCatalog } from "@/content"
+import { buildLessonPath } from "@/lib/domain/progress"
+import type { AppSettings } from "@/lib/domain/models"
+import type {
+  ProgressRepository,
+  SettingsRepository,
+} from "@/lib/repositories/interfaces"
+
+export type ProfileService = ReturnType<typeof createProfileService>
+
+export function createProfileService(
+  progressRepository: ProgressRepository,
+  settingsRepository: SettingsRepository
+) {
+  return {
+    getDashboard() {
+      const snapshot = progressRepository.getSnapshot()
+      const path = buildLessonPath(snapshot)
+
+      return {
+        snapshot,
+        completedLessons: path.filter((node) => node.completed).length,
+        unlockedLessons: path.filter((node) => node.unlocked).length,
+        achievements: achievementCatalog.map((achievement) => ({
+          ...achievement,
+          unlocked: snapshot.profile.achievements.includes(achievement.id),
+        })),
+      }
+    },
+    updateSettings(settings: AppSettings) {
+      const saved = settingsRepository.saveSettings(settings)
+      const snapshot = progressRepository.getSnapshot()
+      const updated = { ...snapshot, settings: saved }
+      progressRepository.saveSnapshot(updated)
+      return updated
+    },
+  }
+}

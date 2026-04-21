@@ -1,0 +1,501 @@
+import {
+	BookOpen,
+	Coins,
+	Flame,
+	Gift,
+	Heart,
+	Sparkles,
+	Star,
+	Target,
+	Volume2,
+} from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+
+import { LearnPathCanvas } from '@/components/lesson/learn-path-canvas'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
+import type {
+	ChestReward,
+	LearnUnitViewModel,
+	Quest,
+} from '@/lib/domain/models'
+import { getDailyChestState } from '@/lib/domain/progress'
+import { getQuestCounts } from '@/lib/domain/quests'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/use-app-store'
+
+function CircularGoal({
+	value,
+	current,
+	target,
+}: {
+	value: number
+	current: number
+	target: number
+}) {
+	const progressDegrees = Math.max(0, Math.min(360, value * 3.6))
+
+	return (
+		<div
+			className="relative flex size-[110px] items-center justify-center rounded-full"
+			style={{
+				background: `conic-gradient(#84cc16 0deg ${progressDegrees}deg, rgba(255,255,255,0.08) ${progressDegrees}deg 360deg)`,
+			}}
+		>
+			<div className="flex size-[82px] flex-col items-center justify-center rounded-full bg-[#15212d] text-white">
+				<p className="text-[2rem] font-black leading-none">{current}</p>
+				<p className="mt-1 text-sm text-white/62">/{target} XP</p>
+			</div>
+		</div>
+	)
+}
+
+function SummaryCell({
+	className,
+	children,
+}: {
+	className?: string
+	children: ReactNode
+}) {
+	return <div className={cn('px-5 py-6 sm:px-7', className)}>{children}</div>
+}
+
+function QuestIcon({ quest }: { quest: Quest }) {
+	if (quest.metric.includes('reviews')) {
+		return <Sparkles className="size-5" />
+	}
+
+	if (quest.metric.includes('xp') || quest.metric.includes('score')) {
+		return <Target className="size-5" />
+	}
+
+	if (quest.metric.includes('streak')) {
+		return <Volume2 className="size-5" />
+	}
+
+	return <BookOpen className="size-5" />
+}
+
+function QuestRailRow({
+	quest,
+	onClaim,
+}: {
+	quest: Quest
+	onClaim: (questId: string) => void
+}) {
+	const progressValue = Math.min((quest.progress / quest.target) * 100, 100)
+
+	return (
+		<div className="rounded-[22px] bg-white/4 p-4">
+			<div className="flex items-start gap-3">
+				<div className="mt-1 flex size-12 shrink-0 items-center justify-center rounded-full bg-lime-400 text-[#12202d]">
+					<QuestIcon quest={quest} />
+				</div>
+				<div className="min-w-0 flex-1">
+					<div className="flex items-start justify-between gap-3">
+						<p className="text-sm font-semibold text-white/92">{quest.title}</p>
+						<p className="shrink-0 text-sm font-semibold text-lime-400">
+							+{quest.rewardPoints} XP
+						</p>
+					</div>
+					<div className="mt-3 flex items-center gap-3">
+						<Progress value={progressValue} className="h-2 bg-white/8" />
+						<span className="text-sm text-white/58">
+							{quest.progress} / {quest.target}
+						</span>
+					</div>
+					{quest.completed && !quest.claimed ? (
+						<Button
+							type="button"
+							size="sm"
+							className="mt-3 h-9 rounded-xl bg-lime-400 px-4 text-[#102030] hover:bg-lime-300"
+							onClick={() => onClaim(quest.id)}
+						>
+							Claim
+						</Button>
+					) : null}
+				</div>
+			</div>
+		</div>
+	)
+}
+
+function LearnSideRail({
+	quests,
+	onClaim,
+	dailyChestState,
+	onOpenDailyChest,
+}: {
+	quests: ReturnType<typeof getQuestCounts>['activeDaily']
+	onClaim: (questId: string) => void
+	dailyChestState: 'locked' | 'ready' | 'opened'
+	onOpenDailyChest: () => void
+}) {
+	return (
+		<Card className="overflow-hidden border-white/10 bg-[#121e29] shadow-none">
+			<div className="space-y-0">
+				<div className="flex items-start justify-between gap-4 px-6 py-6">
+					<div>
+						<h2 className="text-[2rem] font-black tracking-tight text-white">
+							Daily chest
+						</h2>
+						<p className="mt-3 max-w-[14rem] text-lg leading-8 text-white/70">
+							{dailyChestState === 'locked'
+								? "Complete a lesson or review to unlock today's reward."
+								: dailyChestState === 'ready'
+									? 'Open your chest to earn rewards!'
+									: "You already opened today's chest. Come back tomorrow."}
+						</p>
+					</div>
+					<div className="flex size-24 shrink-0 items-center justify-center rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_transparent_55%),linear-gradient(180deg,#5dafff_0%,#2d68ca_100%)] shadow-[inset_0_2px_0_rgba(255,255,255,0.22)]">
+						<Gift className="size-11 text-white" />
+					</div>
+				</div>
+				<div className="px-6 pb-6">
+					<Button
+						type="button"
+						className="h-12 w-full rounded-2xl bg-[#2f7ce7] text-base font-semibold text-white hover:bg-[#4289ec]"
+						disabled={dailyChestState !== 'ready'}
+						onClick={onOpenDailyChest}
+					>
+						{dailyChestState === 'opened' ? 'Opened today' : 'Open chest'}
+					</Button>
+				</div>
+
+				<div className="border-t border-white/8 px-4 py-5">
+					<div className="px-2">
+						<h3 className="text-[1.9rem] font-black tracking-tight text-white">
+							Quests
+						</h3>
+						<p className="mt-2 text-lg leading-8 text-white/70">
+							Complete quests to earn XP!
+						</p>
+						<p className="mt-1 text-sm text-white/42">Refreshes daily</p>
+					</div>
+
+					<div className="mt-5 space-y-3">
+						{quests.slice(0, 3).map((quest) => (
+							<QuestRailRow key={quest.id} quest={quest} onClaim={onClaim} />
+						))}
+					</div>
+
+					<Button
+						asChild
+						variant="outline"
+						className="mt-5 h-12 w-full rounded-2xl border-white/12 bg-transparent text-base text-[#57a8ff] hover:bg-white/5 hover:text-[#83c0ff]"
+					>
+						<Link to="/quests">View all quests</Link>
+					</Button>
+				</div>
+			</div>
+		</Card>
+	)
+}
+
+export function LearnPage() {
+	const snapshot = useAppStore((state) => state.snapshot)
+	const learnUnits = useAppStore((state) => state.learnUnits)
+	const path = useAppStore((state) => state.path)
+	const claimQuest = useAppStore((state) => state.claimQuest)
+	const openPathChest = useAppStore((state) => state.openPathChest)
+	const openDailyChest = useAppStore((state) => state.openDailyChest)
+	const [now] = useState(() => Date.now())
+	const [chestReward, setChestReward] = useState<ChestReward | null>(null)
+
+	const dueReview = snapshot.reviewQueue.filter(
+		(item) => new Date(item.dueAt).getTime() <= now
+	).length
+	const goalProgress = Math.min(
+		(snapshot.profile.dailyGoal.currentXp /
+			snapshot.profile.dailyGoal.xpTarget) *
+			100,
+		100
+	)
+	const nextLesson =
+		path.find((node) => node.isCurrent) ??
+		path.find((node) => node.unlocked && !node.completed)
+	const questCounts = getQuestCounts(snapshot.quests)
+	const dailyChestState = getDailyChestState(snapshot)
+	const activeUnitView = useMemo<LearnUnitViewModel | undefined>(() => {
+		const currentUnitId = nextLesson?.unit.id
+		return (
+			learnUnits.find((unitView) => unitView.unit.id === currentUnitId) ??
+			learnUnits[0]
+		)
+	}, [learnUnits, nextLesson?.unit.id])
+	const activeUnitLessons =
+		activeUnitView?.unit.categories.flatMap((category) => category.lessons) ??
+		[]
+	const completedUnitLessons = activeUnitLessons.filter(
+		(lesson) => snapshot.lessonProgress[lesson.id]?.status === 'completed'
+	).length
+
+	const rewardPresentation = chestReward
+		? chestReward.rewardType === 'xp'
+			? {
+					icon: <Star className="size-8" />,
+					badge: 'XP reward',
+					amountLabel: `+${chestReward.amount} XP`,
+					iconTone: 'from-sky-400 to-cyan-500 text-white',
+				}
+			: chestReward.rewardType === 'points'
+				? {
+						icon: <Coins className="size-8" />,
+						badge: 'Points reward',
+						amountLabel: `+${chestReward.amount} Points`,
+						iconTone: 'from-amber-300 to-orange-400 text-slate-950',
+					}
+				: {
+						icon: <Heart className="size-8" />,
+						badge: 'Heart reward',
+						amountLabel: `+${chestReward.amount} Heart${chestReward.amount === 1 ? '' : 's'}`,
+						iconTone: 'from-rose-400 to-pink-500 text-white',
+					}
+		: null
+
+	function handleOpenPathChest(chestId: string) {
+		const reward = openPathChest(chestId)
+
+		if (reward) {
+			setChestReward(reward)
+		}
+	}
+
+	function handleOpenDailyChest() {
+		const reward = openDailyChest()
+
+		if (reward) {
+			setChestReward(reward)
+		}
+	}
+
+	return (
+		<div className="mx-auto max-w-[1440px] space-y-6">
+			<Dialog
+				open={Boolean(chestReward)}
+				onOpenChange={(open) => !open && setChestReward(null)}
+			>
+				<DialogContent className="max-w-md rounded-[32px] border-white/10 bg-[#12202c] text-white">
+					<DialogHeader className="items-center text-center">
+						<div
+							className={cn(
+								'flex size-20 items-center justify-center rounded-full bg-gradient-to-br shadow-[0_12px_30px_rgba(15,23,42,0.18)]',
+								rewardPresentation?.iconTone
+							)}
+						>
+							{rewardPresentation?.icon}
+						</div>
+						<div className="rounded-full bg-white/8 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-sky-200">
+							{chestReward?.source === 'daily'
+								? 'Daily chest'
+								: 'Treasure chest'}
+						</div>
+						<DialogTitle className="text-3xl font-black tracking-tight text-white">
+							Chest opened
+						</DialogTitle>
+						<DialogDescription className="max-w-sm text-base leading-7 text-white/70">
+							A little bonus for keeping your Tagalog momentum going.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4">
+						<div className="rounded-[24px] border border-white/10 bg-white/4 px-4 py-5 text-center">
+							<p className="text-xs font-black uppercase tracking-[0.16em] text-white/42">
+								{rewardPresentation?.badge}
+							</p>
+							<p className="mt-2 text-3xl font-black text-white">
+								{rewardPresentation?.amountLabel}
+							</p>
+						</div>
+						<Button
+							type="button"
+							className="h-11 w-full rounded-2xl bg-white text-slate-950 hover:bg-white/90"
+							onClick={() => setChestReward(null)}
+						>
+							Continue
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+
+			<div className="flex items-start justify-between gap-6">
+				<div>
+					<h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+						Learn
+					</h1>
+					<p className="mt-2 text-lg text-white/68">
+						Your path to Tagalog fluency
+					</p>
+				</div>
+				<div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/4 px-4 py-2 text-sm text-white/65 lg:flex">
+					<Flame className="size-4 text-orange-300" />
+					{snapshot.profile.streak} day streak and counting
+				</div>
+			</div>
+
+			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+				<div className="space-y-6">
+					<Card className="overflow-hidden border-white/10 bg-[#121d28] shadow-none">
+						<div className="grid divide-y divide-white/8 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+							<SummaryCell className="flex items-center gap-5">
+								<CircularGoal
+									value={goalProgress}
+									current={snapshot.profile.dailyGoal.currentXp}
+									target={snapshot.profile.dailyGoal.xpTarget}
+								/>
+								<div>
+									<p className="text-sm font-medium text-white/56">Daily XP</p>
+									<p className="mt-3 text-2xl font-black text-white">
+										You're on track!
+									</p>
+									<p className="mt-1 max-w-[12rem] text-lg leading-7 text-white/68">
+										Keep it up to reach your goal.
+									</p>
+								</div>
+							</SummaryCell>
+
+							<SummaryCell>
+								<div className="flex items-center gap-2 text-sm font-medium text-white/56">
+									<span>Next lesson</span>
+									<span className="size-3 rounded-full bg-lime-400" />
+								</div>
+								<p className="mt-3 text-[2rem] font-black tracking-tight text-white">
+									{nextLesson?.lesson.title ?? 'Keep going'}
+								</p>
+								<p className="mt-1 max-w-[18rem] text-lg leading-7 text-white/68">
+									{nextLesson?.lesson.description ??
+										'Pick up where you left off and keep progressing.'}
+								</p>
+								{nextLesson ? (
+									<Button
+										asChild
+										className="mt-5 h-12 rounded-full bg-lime-400 px-6 text-base font-semibold text-[#11202d] hover:bg-lime-300"
+									>
+										<Link to={`/lesson/${nextLesson.lesson.id}`}>
+											Start lesson
+										</Link>
+									</Button>
+								) : null}
+							</SummaryCell>
+
+							<SummaryCell>
+								<div className="flex items-center gap-2 text-sm font-medium text-white/56">
+									<span>Review due</span>
+									<span className="size-3 rounded-full bg-amber-400" />
+								</div>
+								<div className="mt-4 flex items-center gap-5">
+									<div className="flex size-24 items-center justify-center rounded-full bg-white/6 text-center">
+										<div>
+											<p className="text-[2rem] font-black leading-none text-white">
+												{dueReview}
+											</p>
+											<p className="mt-1 text-sm text-white/56">cards</p>
+										</div>
+									</div>
+									<div>
+										<p className="max-w-[11rem] text-lg leading-7 text-white/68">
+											Review to keep your streak strong.
+										</p>
+										<Button
+											asChild
+											variant="link"
+											className="mt-3 h-auto p-0 text-base font-semibold text-[#57a8ff] hover:text-[#83c0ff]"
+										>
+											<Link to="/review">Start review</Link>
+										</Button>
+									</div>
+								</div>
+							</SummaryCell>
+
+							<SummaryCell>
+								<p className="text-sm font-medium text-white/56">
+									Current section
+								</p>
+								<p className="mt-3 text-[2rem] font-black tracking-tight text-white">
+									Section {activeUnitView?.unit.order ?? 1}
+								</p>
+								<p className="mt-1 text-[1.7rem] font-medium text-white/72">
+									{activeUnitView?.unit.title}
+								</p>
+								<div className="mt-6 flex items-center gap-4">
+									<Progress
+										value={
+											activeUnitLessons.length
+												? (completedUnitLessons / activeUnitLessons.length) *
+													100
+												: 0
+										}
+										className="h-3 bg-white/8"
+									/>
+									<span className="shrink-0 text-base text-white/58">
+										{completedUnitLessons} / {activeUnitLessons.length} lessons
+									</span>
+								</div>
+							</SummaryCell>
+						</div>
+					</Card>
+
+					<div className="xl:hidden">
+						<LearnSideRail
+							quests={questCounts.activeDaily}
+							onClaim={claimQuest}
+							dailyChestState={dailyChestState}
+							onOpenDailyChest={handleOpenDailyChest}
+						/>
+					</div>
+
+					{activeUnitView ? (
+						<div className="space-y-4">
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div>
+									<div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-lime-400">
+										<Sparkles className="size-4" />
+										Section {activeUnitView.unit.order}
+									</div>
+									<h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+										{activeUnitView.unit.bannerTitle}
+									</h2>
+									<p className="mt-2 max-w-2xl text-lg leading-8 text-white/66">
+										{activeUnitView.unit.bannerSubtitle}
+									</p>
+								</div>
+								<Badge className="rounded-full border-white/10 bg-white/5 px-4 py-2 text-sm text-white">
+									<BookOpen className="mr-2 size-4" />
+									Learn path
+								</Badge>
+							</div>
+
+							<LearnPathCanvas
+								unitView={activeUnitView}
+								activeLessonId={
+									nextLesson?.lesson.id ?? snapshot.currentLessonId
+								}
+								onOpenPathChest={handleOpenPathChest}
+							/>
+						</div>
+					) : null}
+				</div>
+
+				<aside className="hidden xl:block">
+					<div className="sticky top-24">
+						<LearnSideRail
+							quests={questCounts.activeDaily}
+							onClaim={claimQuest}
+							dailyChestState={dailyChestState}
+							onOpenDailyChest={handleOpenDailyChest}
+						/>
+					</div>
+				</aside>
+			</div>
+		</div>
+	)
+}

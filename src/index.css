@@ -120,11 +120,28 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
-    @apply bg-background text-foreground;
-    }
+    @apply bg-background text-foreground antialiased;
+  }
   html {
     @apply font-sans;
-    }
+  }
+
+  body,
+  #root {
+    min-height: 100vh;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top, rgba(125, 211, 252, 0.35), transparent 35%),
+      linear-gradient(180deg, #fff7ed 0%, #f8fafc 45%, #ecfeff 100%);
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 30%),
+      linear-gradient(180deg, #0f1b22 0%, #101f28 55%, #0f1720 100%);
+  }
 }
