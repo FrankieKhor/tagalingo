@@ -38,6 +38,7 @@ export const defaultSettings: AppSettings = {
 export const SPEAKING_SKIP_DURATION_MS = 15 * 60 * 1000
 export const MAX_HEARTS = 5
 export const LESSON_COMPLETION_POINTS = 10
+export const LESSON_PASS_SCORE = 70
 const LEADERBOARD_CYCLE_MS = 7 * 24 * 60 * 60 * 1000
 const LEADERBOARD_SIZE = 10
 
@@ -110,6 +111,86 @@ const DAILY_CHEST_REWARDS = {
 	points: [6, 8, 10],
 	hearts: 1,
 } as const
+
+function getFlattenedLessons() {
+	return curriculumUnits.flatMap((unit) =>
+		unit.categories.flatMap((category) =>
+			category.lessons.map((lesson) => ({
+				lesson,
+				unit,
+				category,
+				lessonIndex: unit.categories
+					.flatMap((candidate) => candidate.lessons)
+					.findIndex((candidate) => candidate.id === lesson.id),
+			}))
+		)
+	)
+}
+
+function isLessonUnlockedAtIndex(
+	flattened: ReturnType<typeof getFlattenedLessons>,
+	snapshot: ProgressSnapshot,
+	index: number
+) {
+	if (index <= 0) {
+		return index === 0
+	}
+
+	const previousLesson = flattened[index - 1]?.lesson
+
+	return (
+		!!previousLesson &&
+		snapshot.lessonProgress[previousLesson.id]?.status === 'completed'
+	)
+}
+
+function getActiveLessonIndex(
+	flattened: ReturnType<typeof getFlattenedLessons>,
+	snapshot: ProgressSnapshot
+) {
+	const firstIncompleteIndex = flattened.findIndex(
+		({ lesson }) => snapshot.lessonProgress[lesson.id]?.status !== 'completed'
+	)
+	const currentLessonIndex =
+		snapshot.currentLessonId === undefined
+			? -1
+			: flattened.findIndex(
+					({ lesson }) => lesson.id === snapshot.currentLessonId
+				)
+
+	if (
+		currentLessonIndex >= 0 &&
+		snapshot.currentLessonId !== undefined &&
+		snapshot.lessonProgress[snapshot.currentLessonId]?.status !== 'completed' &&
+		isLessonUnlockedAtIndex(flattened, snapshot, currentLessonIndex)
+	) {
+		return currentLessonIndex
+	}
+
+	return firstIncompleteIndex
+}
+
+function getAllowedJumpLessonIds(snapshot: ProgressSnapshot) {
+	const flattened = getFlattenedLessons()
+	const currentIndex = getActiveLessonIndex(flattened, snapshot)
+
+	if (currentIndex < 0) {
+		return new Set<string>()
+	}
+
+	const currentUnitId = flattened[currentIndex]?.unit.id
+	const targetIds = flattened
+		.slice(currentIndex + 1)
+		.filter(
+			({ lesson, lessonIndex, unit }) =>
+				unit.id !== currentUnitId &&
+				lessonIndex === 0 &&
+				snapshot.lessonProgress[lesson.id]?.status !== 'completed'
+		)
+		.map(({ lesson }) => lesson.id)
+
+	return new Set(targetIds)
+}
 
 const CHEST_REWARD_WEIGHTS = {
 	xp: 6,
@@ -762,11 +843,8 @@ function applyChestReward(snapshot: ProgressSnapshot, reward: ChestReward) {
 }
 
 export function buildLessonPath(snapshot: ProgressSnapshot): LessonPathNode[] {
-	const flattened = curriculumUnits.flatMap((unit) =>
-		unit.categories.flatMap((category) =>
-			category.lessons.map((lesson) => ({ lesson, unit, category }))
-		)
-	)
+	const flattened = getFlattenedLessons()
+	const activeIndex = getActiveLessonIndex(flattened, snapshot)
 
 	let currentAssigned = false
 
@@ -777,10 +855,7 @@ export function buildLessonPath(snapshot: ProgressSnapshot): LessonPathNode[] {
 			index === 0 ||
 			(!!previousLesson &&
 				snapshot.lessonProgress[previousLesson.id]?.status === 'completed')
-		const isCurrent =
-			!completed &&
-			unlocked &&
-			(!currentAssigned || snapshot.currentLessonId === lesson.id)
+		const isCurrent = !completed && index === activeIndex && !currentAssigned
 
 		if (isCurrent) {
 			currentAssigned = true
@@ -797,6 +872,7 @@ function createUnitItems(
 	nodes: LessonPathNode[]
 ): LearnPathItemViewModel[] {
 	const items: LearnPathItemViewModel[] = []
+	const allowedJumpLessonIds = getAllowedJumpLessonIds(snapshot)
 
 	categories.forEach((category) => {
 		items.push({
@@ -821,6 +897,7 @@ function createUnitItems(
 		nodes
 			.filter((node) => node.category.id === category.id)
 			.forEach((node) => {
+				const canJumpHere = allowedJumpLessonIds.has(node.lesson.id)
 				items.push({
 					id: node.lesson.id,
 					unit,
@@ -831,14 +908,20 @@ function createUnitItems(
 						? 'completed'
 						: node.isCurrent
 							? 'current'
-							: node.unlocked
+							: canJumpHere
+								? 'jump'
+								: node.unlocked
 								? 'available'
 								: 'locked',
 					ctaLabel: node.completed
 						? 'Practice'
 						: node.isCurrent
 							? 'Start'
-							: 'Locked',
+							: canJumpHere
+								? 'Jump here'
+								: node.unlocked
+									? 'Start'
+									: 'Locked',
 				})
 			})
 	})
@@ -1014,6 +1097,10 @@ function getBestCorrectStreak(results: ExerciseResult[]) {
 	return best
 }
 
+function getLessonMaxXp(lesson: Lesson) {
+	return lesson.exercises.reduce((sum, exercise) => sum + exercise.xp, 0)
+}
+
 export function applyLessonSummary(
 	snapshot: ProgressSnapshot,
 	lesson: Lesson,
@@ -1026,12 +1113,41 @@ export function applyLessonSummary(
 			lesson.exercises.length) *
 			100
 	)
-	const totalXp = results.reduce((sum, result) => sum + result.earnedXp, 0)
+	const passed = score >= LESSON_PASS_SCORE
+	const earnedAttemptXp = results.reduce((sum, result) => sum + result.earnedXp, 0)
 	const heartsLost = results.reduce(
 		(sum, result) => sum + Math.abs(Math.min(result.heartsDelta, 0)),
 		0
 	)
-	const previousStatus = snapshot.lessonProgress[lesson.id]?.status
+	const allLessons = getFlattenedLessons().map(({ lesson }) => lesson)
+	const flattenedLessons = getFlattenedLessons()
+	const currentIndex =
+		getActiveLessonIndex(flattenedLessons, snapshot)
+	const attemptedIndex = allLessons.findIndex((item) => item.id === lesson.id)
+	const allowedJumpLessonIds = getAllowedJumpLessonIds(snapshot)
+	const isJumpAttempt =
+		currentIndex >= 0 &&
+		attemptedIndex > currentIndex &&
+		allowedJumpLessonIds.has(lesson.id) &&
+		snapshot.lessonProgress[lesson.id]?.status !== 'completed'
+	const completedRange =
+		passed && isJumpAttempt
+			? allLessons.slice(currentIndex, attemptedIndex + 1)
+			: passed
+				? [lesson]
+				: []
+	const newlyCompletedLessons = completedRange.filter(
+		(item) => snapshot.lessonProgress[item.id]?.status !== 'completed'
+	)
+	const autoCompletedLessons = newlyCompletedLessons.filter(
+		(item) => item.id !== lesson.id
+	)
+	const autoCompletedXp = autoCompletedLessons.reduce(
+		(sum, item) => sum + getLessonMaxXp(item),
+		0
+	)
+	const totalXp = earnedAttemptXp + autoCompletedXp
+	const completedAt = new Date().toISOString()
 	const currentStreak =
 		snapshot.profile.lastActiveOn &&
 		differenceInDays(today, snapshot.profile.lastActiveOn) === 1
@@ -1042,32 +1158,44 @@ export function applyLessonSummary(
 
 	const nextLessonProgress: LessonProgress = {
 		lessonId: lesson.id,
-		status: score >= 70 ? 'completed' : 'in-progress',
+		status: passed ? 'completed' : 'in-progress',
 		bestScore: Math.max(
 			snapshot.lessonProgress[lesson.id]?.bestScore ?? 0,
 			score
 		),
 		attempts: (snapshot.lessonProgress[lesson.id]?.attempts ?? 0) + 1,
-		completedAt: score >= 70 ? new Date().toISOString() : undefined,
+		completedAt: passed ? completedAt : undefined,
+	}
+	const nextLessonId =
+		passed && attemptedIndex >= 0 && (isJumpAttempt || attemptedIndex <= currentIndex)
+			? allLessons[attemptedIndex + 1]?.id
+			: attemptedIndex > currentIndex
+				? snapshot.currentLessonId
+				: lesson.id
+	const earnedLessonPoints =
+		newlyCompletedLessons.length * LESSON_COMPLETION_POINTS
+	const nextLessonProgressMap = {
+		...snapshot.lessonProgress,
+		[lesson.id]: nextLessonProgress,
 	}
 
-	const allLessons = curriculumUnits.flatMap((unit) =>
-		unit.categories.flatMap((category) => category.lessons)
-	)
-	const currentIndex = allLessons.findIndex((item) => item.id === lesson.id)
-	const nextLessonId =
-		score >= 70 ? allLessons[currentIndex + 1]?.id : lesson.id
-	const earnedLessonPoints = score >= 70 ? LESSON_COMPLETION_POINTS : 0
+	for (const skippedLesson of autoCompletedLessons) {
+		const previousProgress = snapshot.lessonProgress[skippedLesson.id]
+		nextLessonProgressMap[skippedLesson.id] = {
+			lessonId: skippedLesson.id,
+			status: 'completed',
+			bestScore: Math.max(previousProgress?.bestScore ?? 0, 100),
+			attempts: previousProgress?.attempts ?? 0,
+			completedAt,
+		}
+	}
 
 	const updated = syncQuestProgress(
 		applyLeaderboardXp(
 			{
 				...snapshot,
 				currentLessonId: nextLessonId,
-				lessonProgress: {
-					...snapshot.lessonProgress,
-					[lesson.id]: nextLessonProgress,
-				},
+				lessonProgress: nextLessonProgressMap,
 				reviewQueue: mergeReviewItems(
 					snapshot.reviewQueue,
 					results.flatMap((result) => result.reviewItems)
@@ -1084,7 +1212,9 @@ export function applyLessonSummary(
 				],
 				dailyStats: {
 					lessonSessionsCompleted:
-						snapshot.dailyStats.lessonSessionsCompleted + 1,
+						snapshot.dailyStats.lessonSessionsCompleted +
+						1 +
+						autoCompletedLessons.length,
 					reviewCardsCompleted: snapshot.dailyStats.reviewCardsCompleted,
 					bestLessonScore: Math.max(snapshot.dailyStats.bestLessonScore, score),
 					bestCorrectStreak: Math.max(
@@ -1101,7 +1231,7 @@ export function applyLessonSummary(
 					lastActiveOn: today,
 					totalLessonsCompleted:
 						snapshot.profile.totalLessonsCompleted +
-						(score >= 70 && previousStatus !== 'completed' ? 1 : 0),
+						newlyCompletedLessons.length,
 					dailyGoal: {
 						...snapshot.profile.dailyGoal,
 						currentXp: snapshot.profile.dailyGoal.currentXp + totalXp,

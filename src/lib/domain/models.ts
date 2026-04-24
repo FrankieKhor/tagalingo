@@ -365,7 +365,12 @@ export type LessonPathNode = {
   isCurrent: boolean
 }
 
-export type LearnPathNodeState = "locked" | "available" | "current" | "completed"
+export type LearnPathNodeState =
+  | "locked"
+  | "available"
+  | "current"
+  | "jump"
+  | "completed"
 
 export type LearnPathNodeViewModel = {
   id: string

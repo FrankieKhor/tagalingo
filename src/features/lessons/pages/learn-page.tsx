@@ -46,7 +46,8 @@ type SectionTone = LearnPathTone & {
 const sectionTones: SectionTone[] = [
 	{
 		header: 'bg-orange-400 shadow-[inset_0_-3px_0_rgba(154,86,0,0.28),0_12px_28px_rgba(8,19,28,0.24)]',
-		headerButton: 'bg-orange-300/20 hover:bg-white/12',
+		// headerButton: 'bg-orange-300/20 hover:bg-white/12',
+		headerButton: 'bg-[#091520]  bg-orange-300/20 hover:bg-white/12',
 		headerButtonBorder: 'border-orange-500/45',
 		availableNode: 'border-orange-300/20 bg-orange-500 text-white',
 		completedNode:
@@ -54,6 +55,9 @@ const sectionTones: SectionTone[] = [
 		currentNode:
 			'border-orange-200/35 bg-orange-500 text-white shadow-[0_0_0_8px_rgba(251,146,60,0.2)]',
 		guidebookNode: 'border-orange-300/25 bg-[#172b34] text-orange-100',
+		calloutText: 'text-orange-500 dark:text-orange-300',
+		calloutSurface:
+			'border-orange-400/45 bg-white text-orange-500 dark:border-orange-300/35 dark:bg-[#091520] dark:text-orange-300',
 		path: '#5f6976',
 		pathFirst: '#7c8793',
 	},
@@ -67,6 +71,9 @@ const sectionTones: SectionTone[] = [
 		currentNode:
 			'border-rose-200/35 bg-rose-500 text-white shadow-[0_0_0_8px_rgba(244,63,94,0.2)]',
 		guidebookNode: 'border-rose-300/25 bg-[#1f2732] text-rose-100',
+		calloutText: 'text-rose-500 dark:text-rose-300',
+		calloutSurface:
+			'border-rose-400/45 bg-white text-rose-500 dark:border-rose-300/35 dark:bg-[#091520] dark:text-rose-300',
 		path: '#646f7c',
 		pathFirst: '#87919d',
 	},
@@ -80,6 +87,9 @@ const sectionTones: SectionTone[] = [
 		currentNode:
 			'border-sky-200/35 bg-sky-500 text-white shadow-[0_0_0_8px_rgba(14,165,233,0.2)]',
 		guidebookNode: 'border-sky-300/25 bg-[#132435] text-sky-100',
+		calloutText: 'text-sky-500 dark:text-sky-300',
+		calloutSurface:
+			'border-sky-400/45 bg-white text-sky-500 dark:border-sky-300/35 dark:bg-[#091520] dark:text-sky-300',
 		path: '#5b6c7a',
 		pathFirst: '#7f93a4',
 	},
@@ -93,6 +103,9 @@ const sectionTones: SectionTone[] = [
 		currentNode:
 			'border-emerald-200/35 bg-emerald-500 text-white shadow-[0_0_0_8px_rgba(16,185,129,0.2)]',
 		guidebookNode: 'border-emerald-300/25 bg-[#142b2c] text-emerald-100',
+		calloutText: 'text-emerald-500 dark:text-emerald-300',
+		calloutSurface:
+			'border-emerald-400/45 bg-white text-emerald-500 dark:border-emerald-300/35 dark:bg-[#091520] dark:text-emerald-300',
 		path: '#596f70',
 		pathFirst: '#7f9694',
 	},
@@ -633,6 +646,7 @@ export function LearnPage() {
 											}
 											onOpenPathChest={handleOpenPathChest}
 											tone={tone}
+											reducedMotion={snapshot.settings.reducedMotion}
 										/>
 									</div>
 								)
