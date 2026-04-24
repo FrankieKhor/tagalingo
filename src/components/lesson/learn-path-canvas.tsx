@@ -1,4 +1,13 @@
-import { BookOpen, Check, Gift, Lock, Play, Star } from 'lucide-react'
+import {
+	BookOpen,
+	Check,
+	FastForward,
+	Gift,
+	Lock,
+	Play,
+	Star,
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type {
@@ -21,6 +30,8 @@ export type LearnPathTone = {
 	completedNode: string
 	currentNode: string
 	guidebookNode: string
+	calloutText: string
+	calloutSurface: string
 	path: string
 	pathFirst: string
 }
@@ -120,6 +131,10 @@ function getNodePalette(item: DisplayItem, tone: LearnPathTone) {
 		return tone.availableNode
 	}
 
+	if (item.state === 'jump') {
+		return tone.availableNode
+	}
+
 	return 'border-white/10 bg-[#2a3542] text-white/60'
 }
 
@@ -150,6 +165,10 @@ function getStatusLabel(item: DisplayItem) {
 
 	if (item.state === 'available') {
 		return `Lesson ${getLessonPosition(item)}`
+	}
+
+	if (item.state === 'jump') {
+		return 'Jump ahead'
 	}
 
 	return 'Locked'
@@ -184,6 +203,10 @@ function getDescription(item: DisplayItem) {
 		return 'Complete the lesson above to unlock this one.'
 	}
 
+	if (item.state === 'jump') {
+		return 'Pass this lesson to complete the earlier lessons automatically.'
+	}
+
 	return item.lesson.description
 }
 
@@ -208,18 +231,82 @@ function PathNodeIcon({ item }: { item: DisplayItem }) {
 		return <Play className="ml-1 size-8 fill-current" />
 	}
 
+	if (item.state === 'jump') {
+		return <FastForward className="ml-1 size-8 fill-current" />
+	}
+
 	return <Lock className="size-8" />
+}
+
+function getCalloutLabel(item: DisplayItem) {
+	if (!isLessonItem(item)) {
+		return undefined
+	}
+
+	if (item.state === 'current') {
+		return 'Start'
+	}
+
+	if (item.state === 'jump') {
+		return 'Jump here?'
+	}
+
+	return undefined
+}
+
+function PathCallout({
+	item,
+	tone,
+	animated = false,
+}: {
+	item: DisplayItem
+	tone: LearnPathTone
+	animated?: boolean
+}) {
+	const label = getCalloutLabel(item)
+
+	if (!label || !isLessonItem(item)) {
+		return null
+	}
+
+	return (
+		<div
+			className={cn(
+				'pointer-events-none absolute inset-x-0 top-0 z-10 flex -translate-y-[calc(100%-3.55rem)] justify-center',
+				animated && '[animation:tagalingo-path-bob_2.8s_ease-in-out_infinite]'
+			)}
+		>
+			<span
+				className={cn(
+					'relative whitespace-nowrap rounded-lg border-2 px-3 py-1.5 text-[0.74rem] font-black uppercase tracking-[0.08em] shadow-[0_8px_18px_rgba(8,19,28,0.2)]',
+					tone.calloutSurface,
+					tone.calloutText
+				)}
+			>
+				{label}
+				<span
+					className={cn(
+						'absolute left-1/2 top-full size-3 -translate-x-1/2 -translate-y-[0.42rem] rotate-45 border-b-2 border-r-2',
+						tone.calloutSurface
+					)}
+					aria-hidden="true"
+				/>
+			</span>
+		</div>
+	)
 }
 
 function PathNode({
 	item,
 	className,
 	onOpenPathChest,
+	onOpenLessonActions,
 	tone,
 }: {
 	item: DisplayItem
 	className?: string
 	onOpenPathChest?: (chestId: string) => void
+	onOpenLessonActions?: (lessonId: string) => void
 	tone: LearnPathTone
 }) {
 	const palette = getNodePalette(item, tone)
@@ -227,8 +314,10 @@ function PathNode({
 	const isReadyChest = isRewardItem(item) && item.chestState === 'ready'
 	const baseClasses = cn(
 		'group flex size-24 items-center justify-center rounded-full border-[5px] transition duration-200',
-		isPlayableLesson && 'hover:scale-[1.02]',
-		isReadyChest && 'hover:scale-[1.02]',
+		isPlayableLesson &&
+			'hover:-translate-y-1 hover:scale-[1.07] hover:brightness-110 hover:shadow-[0_16px_28px_rgba(8,19,28,0.34)]',
+		isReadyChest &&
+			'hover:-translate-y-1 hover:scale-[1.07] hover:brightness-110 hover:shadow-[0_16px_28px_rgba(8,19,28,0.34)]',
 		palette,
 		className
 	)
@@ -270,13 +359,73 @@ function PathNode({
 	}
 
 	return (
-		<Link
-			to={`/lesson/${item.lesson.id}`}
+		<button
+			type="button"
 			className={baseClasses}
-			aria-label={`${item.ctaLabel} ${item.lesson.title}`}
+			aria-label={`Open ${item.ctaLabel.toLowerCase()} options for ${item.lesson.title}`}
+			onClick={() => onOpenLessonActions?.(item.lesson.id)}
 		>
 			<PathNodeIcon item={item} />
-		</Link>
+		</button>
+	)
+}
+
+function getPrimaryActionLabel(item: LessonItem) {
+	if (item.state === 'completed') {
+		return 'Practice +5 XP'
+	}
+
+	if (item.state === 'jump') {
+		return `Jump here +${getLessonXp(item)} XP`
+	}
+
+	return `${item.ctaLabel} +${getLessonXp(item)} XP`
+}
+
+function LessonActionPopup({
+	item,
+	tone,
+	className,
+	panelRef,
+}: {
+	item: LessonItem
+	tone: LearnPathTone
+	className?: string
+	panelRef?: React.RefObject<HTMLDivElement | null>
+}) {
+	return (
+		<div
+			ref={panelRef}
+			className={cn(
+				'z-40 w-[18.5rem] scroll-mb-12 scroll-mt-12',
+				className
+			)}
+		>
+			<div
+				className={cn(
+					'rounded-2xl border-2 p-4 text-white shadow-[0_20px_42px_rgba(8,19,28,0.35)] motion-safe:[animation:tagalingo-lesson-popup-in_180ms_cubic-bezier(0.2,0.8,0.2,1)_both]',
+					tone.completedNode
+				)}
+			>
+				<p className="text-base font-black leading-6">{item.lesson.title}</p>
+				<p className="mt-1 text-sm font-semibold leading-6 text-white/88">
+					Prove your proficiency with this lesson
+				</p>
+				<Link
+					to={`/lesson/${item.lesson.id}`}
+					className="mt-5 flex h-12 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black uppercase tracking-[0.04em] text-[#2b8d10] shadow-[inset_0_-4px_0_rgba(15,23,42,0.12)] transition hover:-translate-y-0.5 hover:shadow-[inset_0_-4px_0_rgba(15,23,42,0.12),0_12px_20px_rgba(8,19,28,0.18)]"
+				>
+					{getPrimaryActionLabel(item)}
+				</Link>
+				<button
+					type="button"
+					className="mt-3 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-2xl bg-yellow-300/70 px-4 text-sm font-black uppercase tracking-[0.04em] text-yellow-900 opacity-75 shadow-[inset_0_-4px_0_rgba(133,77,14,0.18)]"
+					disabled
+				>
+					Legendary coming soon
+				</button>
+			</div>
+		</div>
 	)
 }
 
@@ -290,6 +439,7 @@ function PathLabel({
 	const isLesson = isLessonItem(item)
 	const isCurrentLesson = isLesson && item.state === 'current'
 	const isCompletedLesson = isLesson && item.state === 'completed'
+	const isJumpLesson = isLesson && item.state === 'jump'
 	const isReadyReward = isRewardItem(item) && item.chestState === 'ready'
 
 	return (
@@ -301,7 +451,9 @@ function PathLabel({
 						? 'text-lime-400'
 						: isCurrentLesson
 							? 'text-white'
-							: 'text-white/68'
+							: isJumpLesson
+								? 'text-white/82'
+								: 'text-white/68'
 				)}
 			>
 				{getTitle(item)}
@@ -309,7 +461,7 @@ function PathLabel({
 			<p
 				className={cn(
 					'mt-1 text-[0.95rem] leading-6',
-					isCurrentLesson ? 'text-white/82' : 'text-white/56'
+					isCurrentLesson || isJumpLesson ? 'text-white/82' : 'text-white/56'
 				)}
 			>
 				{getDescription(item)}
@@ -321,6 +473,8 @@ function PathLabel({
 						? 'text-lime-400'
 						: isCurrentLesson
 							? 'text-sky-300'
+							: isJumpLesson
+								? 'text-amber-300'
 							: isReadyReward
 								? 'text-amber-300'
 								: 'text-white/46'
@@ -338,16 +492,67 @@ export function LearnPathCanvas({
 	onOpenPathChest,
 	className,
 	tone,
+	reducedMotion = false,
 }: {
 	unitView: LearnUnitViewModel
 	activeLessonId?: string
 	onOpenPathChest?: (chestId: string) => void
 	className?: string
 	tone: LearnPathTone
+	reducedMotion?: boolean
 }) {
 	const items = getDisplayItems(unitView, activeLessonId)
+	const [activeActionLessonId, setActiveActionLessonId] = useState<
+		string | null
+	>(null)
+	const actionPopupRef = useRef<HTMLDivElement | null>(null)
 	const lastIndex = items.length - 1
 	const desktopHeight = topPadding * 2 + lastIndex * rowGap
+	const activeActionItem = items.find(
+		(item): item is LessonItem =>
+			isLessonItem(item) && item.lesson.id === activeActionLessonId
+	)
+	const shouldAnimateCallout = (item: DisplayItem) =>
+		Boolean(getCalloutLabel(item)) && !reducedMotion
+
+	useEffect(() => {
+		if (!activeActionLessonId) {
+			return
+		}
+
+		function handlePointerDown(event: PointerEvent) {
+			const target = event.target
+
+			if (
+				target instanceof Node &&
+				actionPopupRef.current?.contains(target)
+			) {
+				return
+			}
+
+			setActiveActionLessonId(null)
+		}
+
+		document.addEventListener('pointerdown', handlePointerDown)
+
+		return () => document.removeEventListener('pointerdown', handlePointerDown)
+	}, [activeActionLessonId])
+
+	useEffect(() => {
+		if (!activeActionLessonId) {
+			return
+		}
+
+		const frame = window.requestAnimationFrame(() => {
+			actionPopupRef.current?.scrollIntoView({
+				behavior: reducedMotion ? 'auto' : 'smooth',
+				block: 'nearest',
+				inline: 'nearest',
+			})
+		})
+
+		return () => window.cancelAnimationFrame(frame)
+	}, [activeActionLessonId, reducedMotion])
 
 	return (
 		<section className={cn('mx-auto w-full max-w-[840px]', className)}>
@@ -358,18 +563,41 @@ export function LearnPathCanvas({
 						return (
 							<div
 								key={item.id}
-								className="relative"
+								className={cn(
+									'relative',
+									activeActionItem?.lesson.id === item.id && 'z-40'
+								)}
 								style={{ transform: `translateX(${shift}px)` }}
 							>
-								<div className="absolute -left-[3.1rem] top-1">
+								<div className="absolute -left-[3.1rem] top-1 size-[4.5rem]">
+									{activeActionItem?.lesson.id !== item.id ? (
+										<PathCallout
+											item={item}
+											tone={tone}
+											animated={shouldAnimateCallout(item)}
+										/>
+									) : null}
 									<PathNode
 										item={item}
 										className="size-[4.5rem]"
 										onOpenPathChest={onOpenPathChest}
+										onOpenLessonActions={(lessonId) =>
+											setActiveActionLessonId((current) =>
+												current === lessonId ? null : lessonId
+											)
+										}
 										tone={tone}
 									/>
 								</div>
 								<PathLabel item={item} />
+								{activeActionItem?.lesson.id === item.id ? (
+									<LessonActionPopup
+										item={activeActionItem}
+										tone={tone}
+										panelRef={actionPopupRef}
+										className="mt-4"
+									/>
+								) : null}
 							</div>
 						)
 					})}
@@ -420,18 +648,41 @@ export function LearnPathCanvas({
 						return (
 							<div
 								key={item.id}
-								className="absolute"
+								className={cn(
+									'absolute size-24',
+									activeActionItem?.lesson.id === item.id && 'z-40'
+								)}
 								style={{
 									left: `${x}px`,
 									top: `${y}px`,
 									transform: 'translate(-50%, -50%)',
 								}}
 							>
+								{activeActionItem?.lesson.id !== item.id ? (
+									<PathCallout
+										item={item}
+										tone={tone}
+										animated={shouldAnimateCallout(item)}
+									/>
+								) : null}
 								<PathNode
 									item={item}
 									onOpenPathChest={onOpenPathChest}
+									onOpenLessonActions={(lessonId) =>
+										setActiveActionLessonId((current) =>
+											current === lessonId ? null : lessonId
+										)
+									}
 									tone={tone}
 								/>
+								{activeActionItem?.lesson.id === item.id ? (
+									<LessonActionPopup
+										item={activeActionItem}
+										tone={tone}
+										panelRef={actionPopupRef}
+										className="absolute left-1/2 top-[calc(100%+0.9rem)] -translate-x-1/2"
+									/>
+								) : null}
 
 								<div
 									className={cn(

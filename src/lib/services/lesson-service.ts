@@ -65,6 +65,17 @@ export function createLessonService(
 				0
 			)
 			const createdAt = new Date().toISOString()
+			const autoCompletedLessons = curriculumRepository
+				.getUnits()
+				.flatMap((unit) =>
+					unit.categories.flatMap((category) => category.lessons)
+				)
+				.filter(
+					(candidate) =>
+						candidate.id !== lesson.id &&
+						current.lessonProgress[candidate.id]?.status !== 'completed' &&
+						updated.lessonProgress[candidate.id]?.status === 'completed'
+				)
 
 			await Promise.all([
 				progressRepository.recordLessonAttempt?.({
@@ -81,6 +92,17 @@ export function createLessonService(
 					lessonId: lesson.id,
 					createdAt,
 				}),
+				...autoCompletedLessons.map((candidate) =>
+					progressRepository.recordXpEvent?.({
+						source: 'lesson',
+						amount: candidate.exercises.reduce(
+							(sum, exercise) => sum + exercise.xp,
+							0
+						),
+						lessonId: candidate.id,
+						createdAt,
+					})
+				),
 			])
 
 			return updated
