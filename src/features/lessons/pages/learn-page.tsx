@@ -91,7 +91,7 @@ function QuestRailRow({
 	onClaim,
 }: {
 	quest: Quest
-	onClaim: (questId: string) => void
+	onClaim: (questId: string) => void | Promise<void>
 }) {
 	const progressValue = Math.min((quest.progress / quest.target) * 100, 100)
 
@@ -137,9 +137,9 @@ function LearnSideRail({
 	onOpenDailyChest,
 }: {
 	quests: ReturnType<typeof getQuestCounts>['activeDaily']
-	onClaim: (questId: string) => void
+	onClaim: (questId: string) => void | Promise<void>
 	dailyChestState: 'locked' | 'ready' | 'opened'
-	onOpenDailyChest: () => void
+	onOpenDailyChest: () => void | Promise<void>
 }) {
 	return (
 		<Card className="overflow-hidden border-white/10 bg-[#121e29] shadow-none">
@@ -263,16 +263,16 @@ export function LearnPage() {
 					}
 		: null
 
-	function handleOpenPathChest(chestId: string) {
-		const reward = openPathChest(chestId)
+	async function handleOpenPathChest(chestId: string) {
+		const reward = await openPathChest(chestId)
 
 		if (reward) {
 			setChestReward(reward)
 		}
 	}
 
-	function handleOpenDailyChest() {
-		const reward = openDailyChest()
+	async function handleOpenDailyChest() {
+		const reward = await openDailyChest()
 
 		if (reward) {
 			setChestReward(reward)
@@ -447,7 +447,7 @@ export function LearnPage() {
 					<div className="xl:hidden">
 						<LearnSideRail
 							quests={questCounts.activeDaily}
-							onClaim={claimQuest}
+							onClaim={(questId) => void claimQuest(questId)}
 							dailyChestState={dailyChestState}
 							onOpenDailyChest={handleOpenDailyChest}
 						/>
@@ -489,7 +489,7 @@ export function LearnPage() {
 					<div className="sticky top-24">
 						<LearnSideRail
 							quests={questCounts.activeDaily}
-							onClaim={claimQuest}
+							onClaim={(questId) => void claimQuest(questId)}
 							dailyChestState={dailyChestState}
 							onOpenDailyChest={handleOpenDailyChest}
 						/>
