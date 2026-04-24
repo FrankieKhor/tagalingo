@@ -1,15 +1,15 @@
-import type { ProgressRepository } from "@/lib/repositories/interfaces"
+import type { ProgressRepository } from '@/lib/repositories/interfaces'
 
 export function createSupabaseProgressRepository(): ProgressRepository {
-  return {
-    getSnapshot() {
-      throw new Error("SupabaseProgressRepository is not implemented yet.")
-    },
-    saveSnapshot() {
-      throw new Error("SupabaseProgressRepository is not implemented yet.")
-    },
-    reset() {
-      throw new Error("SupabaseProgressRepository is not implemented yet.")
-    },
-  }
+	return {
+		async getSnapshot() {
+			throw new Error('SupabaseProgressRepository is not implemented yet.')
+		},
+		async saveSnapshot() {
+			throw new Error('SupabaseProgressRepository is not implemented yet.')
+		},
+		async reset() {
+			throw new Error('SupabaseProgressRepository is not implemented yet.')
+		},
+	}
 }

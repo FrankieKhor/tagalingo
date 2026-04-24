@@ -1,19 +1,23 @@
-import { type ReactNode, useEffect } from "react"
+import { type ReactNode, useEffect } from 'react'
 
-import { useAppStore } from "@/store/use-app-store"
+import { useAuthStore } from '@/store/use-auth-store'
+import { useAppStore } from '@/store/use-app-store'
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  const initialize = useAppStore((state) => state.initialize)
-  const theme = useAppStore((state) => state.snapshot.settings.theme)
+	const initialize = useAppStore((state) => state.initialize)
+	const initializeAuth = useAuthStore((state) => state.initialize)
+	const theme = useAppStore((state) => state.snapshot.settings.theme)
 
-  useEffect(() => {
-    initialize()
-  }, [initialize])
+	useEffect(() => {
+		return initializeAuth((user) => {
+			void initialize(user)
+		})
+	}, [initialize, initializeAuth])
 
-  useEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle("dark", theme === "dark")
-  }, [theme])
+	useEffect(() => {
+		const root = document.documentElement
+		root.classList.toggle('dark', theme === 'dark')
+	}, [theme])
 
-  return children
+	return children
 }

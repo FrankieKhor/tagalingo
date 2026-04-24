@@ -1,132 +1,189 @@
-import { create } from "zustand"
+import { create } from 'zustand'
 
-import { buildLeaderboardView } from "@/lib/domain/progress"
-import { appServices } from "@/lib/services/app-services"
+import type { AuthUser } from '@/lib/firebase/auth'
+import { buildLeaderboardView } from '@/lib/domain/progress'
+import { createInitialSnapshot } from '@/lib/domain/progress'
+import { appServices } from '@/lib/services/app-services'
 import type {
-  AppSettings,
-  ChestReward,
-  ExerciseResult,
-  LeaderboardViewModel,
-  Lesson,
-  ProgressSnapshot,
-  ShopItemId,
-  VoiceCapability,
-} from "@/lib/domain/models"
+	AppSettings,
+	ChestReward,
+	ExerciseResult,
+	LeaderboardViewModel,
+	Lesson,
+	ProgressSnapshot,
+	ShopItemId,
+	VoiceCapability,
+} from '@/lib/domain/models'
 
-type AppState = {
-  initialized: boolean
-  snapshot: ProgressSnapshot
-  units: ReturnType<typeof appServices.lessonService.getUnits>
-  path: ReturnType<typeof appServices.lessonService.getPath>
-  learnUnits: ReturnType<typeof appServices.lessonService.getLearnUnits>
-  leaderboardView: LeaderboardViewModel
-  voiceCapability: VoiceCapability
-  initialize: () => void
-  getLesson: (lessonId: string) => Lesson | undefined
-  completeLesson: (lesson: Lesson, results: ExerciseResult[]) => ProgressSnapshot
-  setSpeakingSkipUntil: (speakingSkipUntil?: string) => ProgressSnapshot
-  submitReview: (reviewId: string, correct: boolean) => ProgressSnapshot
-  updateSettings: (settings: AppSettings) => ProgressSnapshot
-  claimQuest: (questId: string) => ProgressSnapshot
-  buyShopItem: (itemId: ShopItemId) => ProgressSnapshot
-  useShopItem: (itemId: Extract<ShopItemId, "heart-refill" | "heart-snack">) => ProgressSnapshot
-  toggleEquippedItem: (itemId: Extract<ShopItemId, "streak-freeze">) => ProgressSnapshot
-  openPathChest: (chestId: string) => ChestReward | null
-  openDailyChest: () => ChestReward | null
-  resetProgress: () => void
+type SnapshotDerivedState = {
+	snapshot: ProgressSnapshot
+	units: ReturnType<typeof appServices.lessonService.getUnits>
+	path: ReturnType<typeof appServices.lessonService.getPath>
+	learnUnits: ReturnType<typeof appServices.lessonService.getLearnUnits>
+	leaderboardView: LeaderboardViewModel
+	voiceCapability: VoiceCapability
 }
 
-function snapshotState() {
-  const snapshot = appServices.progressRepository.getSnapshot()
+type AppState = SnapshotDerivedState & {
+	initialized: boolean
+	loading: boolean
+	saving: boolean
+	error?: string
+	initialize: (user?: AuthUser | null) => Promise<void>
+	getLesson: (lessonId: string) => Lesson | undefined
+	completeLesson: (
+		lesson: Lesson,
+		results: ExerciseResult[]
+	) => Promise<ProgressSnapshot>
+	setSpeakingSkipUntil: (
+		speakingSkipUntil?: string
+	) => Promise<ProgressSnapshot>
+	submitReview: (
+		reviewId: string,
+		correct: boolean
+	) => Promise<ProgressSnapshot>
+	updateSettings: (settings: AppSettings) => Promise<ProgressSnapshot>
+	claimQuest: (questId: string) => Promise<ProgressSnapshot>
+	buyShopItem: (itemId: ShopItemId) => Promise<ProgressSnapshot>
+	useShopItem: (
+		itemId: Extract<ShopItemId, 'heart-refill' | 'heart-snack'>
+	) => Promise<ProgressSnapshot>
+	toggleEquippedItem: (
+		itemId: Extract<ShopItemId, 'streak-freeze'>
+	) => Promise<ProgressSnapshot>
+	openPathChest: (chestId: string) => Promise<ChestReward | null>
+	openDailyChest: () => Promise<ChestReward | null>
+	resetProgress: () => Promise<void>
+}
 
-  return {
-    snapshot,
-    units: appServices.lessonService.getUnits(),
-    path: appServices.lessonService.getPath(snapshot),
-    learnUnits: appServices.lessonService.getLearnUnits(snapshot),
-    leaderboardView: buildLeaderboardView(snapshot),
-    voiceCapability: appServices.voiceService.getCapability(),
-  }
+function deriveSnapshotState(snapshot: ProgressSnapshot): SnapshotDerivedState {
+	return {
+		snapshot,
+		units: appServices.lessonService.getUnits(),
+		path: appServices.lessonService.getPath(snapshot),
+		learnUnits: appServices.lessonService.getLearnUnits(snapshot),
+		leaderboardView: buildLeaderboardView(snapshot),
+		voiceCapability: appServices.voiceService.getCapability(),
+	}
+}
+
+const initialSnapshot = createInitialSnapshot()
+
+async function runSnapshotMutation(
+	set: (partial: Partial<AppState>) => void,
+	mutation: () => Promise<ProgressSnapshot>
+) {
+	set({ saving: true, error: undefined })
+
+	try {
+		const snapshot = await mutation()
+		set({
+			...deriveSnapshotState(snapshot),
+			saving: false,
+		})
+		return snapshot
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : 'Something went wrong.'
+		set({ saving: false, error: message })
+		throw error
+	}
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  initialized: false,
-  ...snapshotState(),
-  initialize: () => set({ initialized: true, ...snapshotState() }),
-  getLesson: (lessonId: string) => appServices.lessonService.getLesson(lessonId),
-  completeLesson: (lesson, results) => {
-    const snapshot = appServices.lessonService.completeLesson(lesson, results)
-    set({
-      snapshot,
-      path: appServices.lessonService.getPath(snapshot),
-      learnUnits: appServices.lessonService.getLearnUnits(snapshot),
-      leaderboardView: buildLeaderboardView(snapshot),
-    })
-    return snapshot
-  },
-  setSpeakingSkipUntil: (speakingSkipUntil) => {
-    const snapshot = appServices.lessonService.setSpeakingSkipUntil(speakingSkipUntil)
-    set({ snapshot, leaderboardView: buildLeaderboardView(snapshot) })
-    return snapshot
-  },
-  submitReview: (reviewId, correct) => {
-    const snapshot = appServices.reviewService.submitReview(reviewId, correct)
-    set({
-      snapshot,
-      path: appServices.lessonService.getPath(snapshot),
-      learnUnits: appServices.lessonService.getLearnUnits(snapshot),
-      leaderboardView: buildLeaderboardView(snapshot),
-    })
-    return snapshot
-  },
-  updateSettings: (settings) => {
-    const snapshot = appServices.profileService.updateSettings(settings)
-    set({ snapshot, leaderboardView: buildLeaderboardView(snapshot) })
-    return snapshot
-  },
-  claimQuest: (questId) => {
-    const snapshot = appServices.economyService.claimQuest(questId)
-    set({ snapshot, leaderboardView: buildLeaderboardView(snapshot) })
-    return snapshot
-  },
-  buyShopItem: (itemId) => {
-    const snapshot = appServices.economyService.buyShopItem(itemId)
-    set({ snapshot, leaderboardView: buildLeaderboardView(snapshot) })
-    return snapshot
-  },
-  useShopItem: (itemId) => {
-    const snapshot = appServices.economyService.useShopItem(itemId)
-    set({ snapshot, leaderboardView: buildLeaderboardView(snapshot) })
-    return snapshot
-  },
-  toggleEquippedItem: (itemId) => {
-    const snapshot = appServices.economyService.toggleEquippedItem(itemId)
-    set({ snapshot, leaderboardView: buildLeaderboardView(snapshot) })
-    return snapshot
-  },
-  openPathChest: (chestId) => {
-    const { snapshot, reward } = appServices.economyService.openPathChest(chestId)
-    set({
-      snapshot,
-      path: appServices.lessonService.getPath(snapshot),
-      learnUnits: appServices.lessonService.getLearnUnits(snapshot),
-      leaderboardView: buildLeaderboardView(snapshot),
-    })
-    return reward
-  },
-  openDailyChest: () => {
-    const { snapshot, reward } = appServices.economyService.openDailyChest()
-    set({
-      snapshot,
-      path: appServices.lessonService.getPath(snapshot),
-      learnUnits: appServices.lessonService.getLearnUnits(snapshot),
-      leaderboardView: buildLeaderboardView(snapshot),
-    })
-    return reward
-  },
-  resetProgress: () =>
-    set({
-      ...snapshotState(),
-      initialized: true,
-    }),
+	initialized: false,
+	loading: true,
+	saving: false,
+	...deriveSnapshotState(initialSnapshot),
+	initialize: async (user) => {
+		set({ loading: true, error: undefined })
+
+		try {
+			const snapshot = await appServices.progressRepository.setUser(
+				user ?? null
+			)
+			set({
+				...deriveSnapshotState(snapshot),
+				initialized: true,
+				loading: false,
+			})
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Progress could not be loaded.'
+			set({ initialized: true, loading: false, error: message })
+		}
+	},
+	getLesson: (lessonId: string) =>
+		appServices.lessonService.getLesson(lessonId),
+	completeLesson: (lesson, results) =>
+		runSnapshotMutation(set, () =>
+			appServices.lessonService.completeLesson(lesson, results)
+		),
+	setSpeakingSkipUntil: (speakingSkipUntil) =>
+		runSnapshotMutation(set, () =>
+			appServices.lessonService.setSpeakingSkipUntil(speakingSkipUntil)
+		),
+	submitReview: (reviewId, correct) =>
+		runSnapshotMutation(set, () =>
+			appServices.reviewService.submitReview(reviewId, correct)
+		),
+	updateSettings: (settings) =>
+		runSnapshotMutation(set, () =>
+			appServices.profileService.updateSettings(settings)
+		),
+	claimQuest: (questId) =>
+		runSnapshotMutation(set, () =>
+			appServices.economyService.claimQuest(questId)
+		),
+	buyShopItem: (itemId) =>
+		runSnapshotMutation(set, () =>
+			appServices.economyService.buyShopItem(itemId)
+		),
+	useShopItem: (itemId) =>
+		runSnapshotMutation(set, () =>
+			appServices.economyService.useShopItem(itemId)
+		),
+	toggleEquippedItem: (itemId) =>
+		runSnapshotMutation(set, () =>
+			appServices.economyService.toggleEquippedItem(itemId)
+		),
+	openPathChest: async (chestId) => {
+		let reward: ChestReward | null = null
+
+		await runSnapshotMutation(set, async () => {
+			const result = await appServices.economyService.openPathChest(chestId)
+			reward = result.reward
+			return result.snapshot
+		})
+
+		return reward
+	},
+	openDailyChest: async () => {
+		let reward: ChestReward | null = null
+
+		await runSnapshotMutation(set, async () => {
+			const result = await appServices.economyService.openDailyChest()
+			reward = result.reward
+			return result.snapshot
+		})
+
+		return reward
+	},
+	resetProgress: async () => {
+		set({ saving: true, error: undefined })
+
+		try {
+			const snapshot = await appServices.progressRepository.reset()
+			set({
+				...deriveSnapshotState(snapshot),
+				initialized: true,
+				saving: false,
+			})
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Progress could not be reset.'
+			set({ saving: false, error: message })
+			throw error
+		}
+	},
 }))
