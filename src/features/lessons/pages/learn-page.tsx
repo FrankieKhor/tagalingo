@@ -1,4 +1,5 @@
 import {
+	ArrowLeft,
 	BookOpen,
 	Coins,
 	Flame,
@@ -9,11 +10,13 @@ import {
 	Target,
 	Volume2,
 } from 'lucide-react'
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { LearnPathCanvas } from '@/components/lesson/learn-path-canvas'
-import { Badge } from '@/components/ui/badge'
+import {
+	LearnPathCanvas,
+	type LearnPathTone,
+} from '@/components/lesson/learn-path-canvas'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
@@ -33,6 +36,112 @@ import { getDailyChestState } from '@/lib/domain/progress'
 import { getQuestCounts } from '@/lib/domain/quests'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/use-app-store'
+
+type SectionTone = LearnPathTone & {
+	header: string
+	headerButton: string
+	headerButtonBorder: string
+}
+
+const sectionTones: SectionTone[] = [
+	{
+		header: 'bg-orange-400 shadow-[inset_0_-3px_0_rgba(154,86,0,0.28),0_12px_28px_rgba(8,19,28,0.24)]',
+		headerButton: 'bg-orange-300/20 hover:bg-white/12',
+		headerButtonBorder: 'border-orange-500/45',
+		availableNode: 'border-orange-300/20 bg-orange-500 text-white',
+		completedNode:
+			'border-orange-200/30 bg-orange-400 text-white shadow-[0_0_0_6px_rgba(251,146,60,0.16)]',
+		currentNode:
+			'border-orange-200/35 bg-orange-500 text-white shadow-[0_0_0_8px_rgba(251,146,60,0.2)]',
+		guidebookNode: 'border-orange-300/25 bg-[#172b34] text-orange-100',
+		path: '#5f6976',
+		pathFirst: '#7c8793',
+	},
+	{
+		header: 'bg-rose-500 shadow-[inset_0_-3px_0_rgba(136,19,55,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
+		headerButton: 'bg-rose-300/18 hover:bg-white/12',
+		headerButtonBorder: 'border-rose-700/35',
+		availableNode: 'border-rose-300/20 bg-rose-500 text-white',
+		completedNode:
+			'border-rose-200/30 bg-rose-500 text-white shadow-[0_0_0_6px_rgba(244,63,94,0.16)]',
+		currentNode:
+			'border-rose-200/35 bg-rose-500 text-white shadow-[0_0_0_8px_rgba(244,63,94,0.2)]',
+		guidebookNode: 'border-rose-300/25 bg-[#1f2732] text-rose-100',
+		path: '#646f7c',
+		pathFirst: '#87919d',
+	},
+	{
+		header: 'bg-sky-500 shadow-[inset_0_-3px_0_rgba(12,74,110,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
+		headerButton: 'bg-sky-300/18 hover:bg-white/12',
+		headerButtonBorder: 'border-sky-700/35',
+		availableNode: 'border-sky-300/20 bg-sky-500 text-white',
+		completedNode:
+			'border-sky-200/30 bg-sky-500 text-white shadow-[0_0_0_6px_rgba(14,165,233,0.16)]',
+		currentNode:
+			'border-sky-200/35 bg-sky-500 text-white shadow-[0_0_0_8px_rgba(14,165,233,0.2)]',
+		guidebookNode: 'border-sky-300/25 bg-[#132435] text-sky-100',
+		path: '#5b6c7a',
+		pathFirst: '#7f93a4',
+	},
+	{
+		header: 'bg-emerald-500 shadow-[inset_0_-3px_0_rgba(6,95,70,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
+		headerButton: 'bg-emerald-300/18 hover:bg-white/12',
+		headerButtonBorder: 'border-emerald-700/35',
+		availableNode: 'border-emerald-300/20 bg-emerald-500 text-white',
+		completedNode:
+			'border-emerald-200/30 bg-emerald-500 text-white shadow-[0_0_0_6px_rgba(16,185,129,0.16)]',
+		currentNode:
+			'border-emerald-200/35 bg-emerald-500 text-white shadow-[0_0_0_8px_rgba(16,185,129,0.2)]',
+		guidebookNode: 'border-emerald-300/25 bg-[#142b2c] text-emerald-100',
+		path: '#596f70',
+		pathFirst: '#7f9694',
+	},
+]
+
+function getSectionTone(order: number) {
+	return sectionTones[(order - 1) % sectionTones.length]
+}
+
+function SectionPathHeader({
+	unitView,
+	tone,
+}: {
+	unitView: LearnUnitViewModel
+	tone: SectionTone
+}) {
+	return (
+		<div
+			className={cn(
+				'sticky top-20 z-30 mx-auto w-full max-w-[592px] rounded-2xl px-4 py-4 text-white sm:px-5',
+				tone.header
+			)}
+		>
+			<div className="flex items-center justify-between gap-3">
+				<div className="min-w-0">
+					<div className="flex items-center gap-2 text-xs font-black uppercase">
+						<ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+						<span>Section {unitView.unit.order}</span>
+					</div>
+					<h2 className="mt-2 truncate text-lg font-black tracking-tight sm:text-xl">
+						{unitView.unit.bannerTitle}
+					</h2>
+				</div>
+				<button
+					type="button"
+					className={cn(
+						'h-12 shrink-0 items-center gap-2 rounded-2xl border-2 px-4 text-sm font-black uppercase shadow-[inset_0_-3px_0_rgba(8,19,28,0.16)] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:flex',
+						'hidden',
+						tone.headerButton,
+						tone.headerButtonBorder
+					)}
+				>
+					<BookOpen className="size-5" aria-hidden="true" />
+					Guidebook
+				</button>
+			</div>
+		</div>
+	)
+}
 
 function CircularGoal({
 	value,
@@ -211,6 +320,10 @@ export function LearnPage() {
 	const openDailyChest = useAppStore((state) => state.openDailyChest)
 	const [now] = useState(() => Date.now())
 	const [chestReward, setChestReward] = useState<ChestReward | null>(null)
+	const [activeSectionId, setActiveSectionId] = useState<string | undefined>(
+		undefined
+	)
+	const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
 	const dueReview = snapshot.reviewQueue.filter(
 		(item) => new Date(item.dueAt).getTime() <= now
@@ -239,6 +352,47 @@ export function LearnPage() {
 	const completedUnitLessons = activeUnitLessons.filter(
 		(lesson) => snapshot.lessonProgress[lesson.id]?.status === 'completed'
 	).length
+	const activeHeaderUnit =
+		learnUnits.find((unitView) => unitView.unit.id === activeSectionId) ??
+		activeUnitView ??
+		learnUnits[0]
+	const activeHeaderTone = activeHeaderUnit
+		? getSectionTone(activeHeaderUnit.unit.order)
+		: sectionTones[0]
+
+	useEffect(() => {
+		if (!learnUnits.length) {
+			return
+		}
+
+		function updateActiveSection() {
+			let activeId = learnUnits[0]?.unit.id
+			const triggerY = 160
+
+			for (const unitView of learnUnits) {
+				const section = sectionRefs.current[unitView.unit.id]
+
+				if (!section) {
+					continue
+				}
+
+				if (section.getBoundingClientRect().top <= triggerY) {
+					activeId = unitView.unit.id
+				}
+			}
+
+			setActiveSectionId(activeId)
+		}
+
+		updateActiveSection()
+		window.addEventListener('scroll', updateActiveSection, { passive: true })
+		window.addEventListener('resize', updateActiveSection)
+
+		return () => {
+			window.removeEventListener('scroll', updateActiveSection)
+			window.removeEventListener('resize', updateActiveSection)
+		}
+	}, [learnUnits])
 
 	const rewardPresentation = chestReward
 		? chestReward.rewardType === 'xp'
@@ -453,36 +607,38 @@ export function LearnPage() {
 						/>
 					</div>
 
-					{activeUnitView ? (
-						<div className="space-y-4">
-							<div className="flex flex-wrap items-center justify-between gap-3">
-								<div>
-									<div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-lime-400">
-										<Sparkles className="size-4" />
-										Section {activeUnitView.unit.order}
-									</div>
-									<h2 className="mt-2 text-3xl font-black tracking-tight text-white">
-										{activeUnitView.unit.bannerTitle}
-									</h2>
-									<p className="mt-2 max-w-2xl text-lg leading-8 text-white/66">
-										{activeUnitView.unit.bannerSubtitle}
-									</p>
-								</div>
-								<Badge className="rounded-full border-white/10 bg-white/5 px-4 py-2 text-sm text-white">
-									<BookOpen className="mr-2 size-4" />
-									Learn path
-								</Badge>
-							</div>
-
-							<LearnPathCanvas
-								unitView={activeUnitView}
-								activeLessonId={
-									nextLesson?.lesson.id ?? snapshot.currentLessonId
-								}
-								onOpenPathChest={handleOpenPathChest}
+					<div className="mx-auto max-w-[920px] rounded-[32px] bg-[#091520] px-4 py-5 sm:px-6 lg:px-8">
+						{activeHeaderUnit ? (
+							<SectionPathHeader
+								unitView={activeHeaderUnit}
+								tone={activeHeaderTone}
 							/>
+						) : null}
+
+						<div className="pt-2">
+							{learnUnits.map((unitView) => {
+								const tone = getSectionTone(unitView.unit.order)
+
+								return (
+									<div
+										key={unitView.unit.id}
+										ref={(node) => {
+											sectionRefs.current[unitView.unit.id] = node
+										}}
+									>
+										<LearnPathCanvas
+											unitView={unitView}
+											activeLessonId={
+												nextLesson?.lesson.id ?? snapshot.currentLessonId
+											}
+											onOpenPathChest={handleOpenPathChest}
+											tone={tone}
+										/>
+									</div>
+								)
+							})}
 						</div>
-					) : null}
+					</div>
 				</div>
 
 				<aside className="hidden xl:block">

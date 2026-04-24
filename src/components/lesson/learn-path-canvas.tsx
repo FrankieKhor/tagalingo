@@ -16,13 +16,21 @@ type RewardItem = LearnPathMarkerViewModel & {
 }
 type MarkerItem = GuidebookItem | RewardItem
 type DisplayItem = LessonItem | MarkerItem
+export type LearnPathTone = {
+	availableNode: string
+	completedNode: string
+	currentNode: string
+	guidebookNode: string
+	path: string
+	pathFirst: string
+}
 
 const desktopOffsets = [0, 88, -78, 96, -64, 56]
 const mobileOffsets = [0, 16, -8, 14, -10, 8]
-const desktopCenterX = 220
-const desktopWidth = 600
+const desktopCenterX = 360
+const desktopWidth = 760
 const rowGap = 148
-const topPadding = 72
+const topPadding = 88
 
 function isLessonItem(item: DisplayItem): item is LessonItem {
 	return item.nodeType === 'lesson'
@@ -83,33 +91,33 @@ function getDisplayItems(
 	}, [])
 }
 
-function getNodePalette(item: DisplayItem) {
+function getNodePalette(item: DisplayItem, tone: LearnPathTone) {
 	if (isRewardItem(item)) {
 		if (item.chestState === 'opened') {
-			return 'border-emerald-400/30 bg-emerald-500 text-white shadow-[0_0_0_6px_rgba(74,222,128,0.12)]'
+			return tone.completedNode
 		}
 
 		if (item.chestState === 'ready') {
-			return 'border-amber-300/30 bg-amber-400 text-slate-950 shadow-[0_0_0_6px_rgba(251,191,36,0.16)]'
+			return tone.currentNode
 		}
 
 		return 'border-white/10 bg-[#2a3542] text-white/55'
 	}
 
 	if (isGuidebookItem(item)) {
-		return 'border-sky-400/25 bg-[#132435] text-sky-100'
+		return tone.guidebookNode
 	}
 
 	if (item.state === 'completed') {
-		return 'border-lime-300/25 bg-[#70b331] text-white shadow-[0_0_0_6px_rgba(132,204,22,0.14)]'
+		return tone.completedNode
 	}
 
 	if (item.state === 'current') {
-		return 'border-sky-300/30 bg-[#1e7cf2] text-white shadow-[0_0_0_8px_rgba(59,130,246,0.18)]'
+		return tone.currentNode
 	}
 
 	if (item.state === 'available') {
-		return 'border-sky-300/15 bg-[#2563eb] text-white'
+		return tone.availableNode
 	}
 
 	return 'border-white/10 bg-[#2a3542] text-white/60'
@@ -207,12 +215,14 @@ function PathNode({
 	item,
 	className,
 	onOpenPathChest,
+	tone,
 }: {
 	item: DisplayItem
 	className?: string
 	onOpenPathChest?: (chestId: string) => void
+	tone: LearnPathTone
 }) {
-	const palette = getNodePalette(item)
+	const palette = getNodePalette(item, tone)
 	const isPlayableLesson = isLessonItem(item) && item.state !== 'locked'
 	const isReadyChest = isRewardItem(item) && item.chestState === 'ready'
 	const baseClasses = cn(
@@ -326,18 +336,22 @@ export function LearnPathCanvas({
 	unitView,
 	activeLessonId,
 	onOpenPathChest,
+	className,
+	tone,
 }: {
 	unitView: LearnUnitViewModel
 	activeLessonId?: string
 	onOpenPathChest?: (chestId: string) => void
+	className?: string
+	tone: LearnPathTone
 }) {
 	const items = getDisplayItems(unitView, activeLessonId)
 	const lastIndex = items.length - 1
 	const desktopHeight = topPadding * 2 + lastIndex * rowGap
 
 	return (
-		<section className="rounded-[32px] border border-white/8 bg-[#091520] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-			<div className="md:hidden">
+		<section className={cn('mx-auto w-full max-w-[840px]', className)}>
+			<div className="pt-8 md:hidden">
 				<div className="relative ml-4 space-y-10 border-l border-white/10 pl-9">
 					{items.map((item, index) => {
 						const shift = mobileOffsets[index % mobileOffsets.length]
@@ -352,6 +366,7 @@ export function LearnPathCanvas({
 										item={item}
 										className="size-[4.5rem]"
 										onOpenPathChest={onOpenPathChest}
+										tone={tone}
 									/>
 								</div>
 								<PathLabel item={item} />
@@ -361,7 +376,7 @@ export function LearnPathCanvas({
 				</div>
 			</div>
 
-			<div className="hidden md:block">
+			<div className="hidden pt-2 md:block">
 				<div
 					className="relative mx-auto"
 					style={{ height: `${desktopHeight}px`, width: `${desktopWidth}px` }}
@@ -387,7 +402,7 @@ export function LearnPathCanvas({
 								<path
 									key={`path-${items[index]?.id ?? index}`}
 									d={`M ${x1} ${y1} C ${x1} ${y1 + 48}, ${x2} ${y2 - 48}, ${x2} ${y2}`}
-									stroke={index === 0 ? '#556275' : '#4b5768'}
+									stroke={index === 0 ? tone.pathFirst : tone.path}
 									strokeWidth="8"
 									strokeLinecap="round"
 									opacity="0.95"
@@ -412,11 +427,15 @@ export function LearnPathCanvas({
 									transform: 'translate(-50%, -50%)',
 								}}
 							>
-								<PathNode item={item} onOpenPathChest={onOpenPathChest} />
+								<PathNode
+									item={item}
+									onOpenPathChest={onOpenPathChest}
+									tone={tone}
+								/>
 
 								<div
 									className={cn(
-										'absolute top-1/2 w-[230px] -translate-y-1/2',
+										'sr-only absolute top-1/2 w-[230px] -translate-y-1/2',
 										labelOnLeft
 											? 'right-[7.25rem] text-right'
 											: 'left-[7.25rem]'
