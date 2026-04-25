@@ -37,7 +37,7 @@ export type LearnPathTone = {
 }
 
 const desktopOffsets = [0, 88, -78, 96, -64, 56]
-const mobileOffsets = [0, 16, -8, 14, -10, 8]
+const mobileOffsets = [0, 10, -6, 8, -8, 4]
 const desktopCenterX = 360
 const desktopWidth = 760
 const rowGap = 148
@@ -397,7 +397,7 @@ function LessonActionPopup({
 		<div
 			ref={panelRef}
 			className={cn(
-				'z-40 w-[18.5rem] scroll-mb-12 scroll-mt-12',
+				'z-40 w-[min(18.5rem,calc(100vw-5rem))] scroll-mb-12 scroll-mt-12',
 				className
 			)}
 		>
@@ -443,7 +443,7 @@ function PathLabel({
 	const isReadyReward = isRewardItem(item) && item.chestState === 'ready'
 
 	return (
-		<div className={cn('max-w-[220px] text-left', className)}>
+		<div className={cn('max-w-full text-left sm:max-w-[220px]', className)}>
 			<p
 				className={cn(
 					'text-sm font-semibold',
@@ -475,9 +475,9 @@ function PathLabel({
 							? 'text-sky-300'
 							: isJumpLesson
 								? 'text-amber-300'
-							: isReadyReward
-								? 'text-amber-300'
-								: 'text-white/46'
+								: isReadyReward
+									? 'text-amber-300'
+									: 'text-white/46'
 				)}
 			>
 				{getStatusLabel(item)}
@@ -523,10 +523,7 @@ export function LearnPathCanvas({
 		function handlePointerDown(event: PointerEvent) {
 			const target = event.target
 
-			if (
-				target instanceof Node &&
-				actionPopupRef.current?.contains(target)
-			) {
+			if (target instanceof Node && actionPopupRef.current?.contains(target)) {
 				return
 			}
 
@@ -556,8 +553,8 @@ export function LearnPathCanvas({
 
 	return (
 		<section className={cn('mx-auto w-full max-w-[840px]', className)}>
-			<div className="pt-8 md:hidden">
-				<div className="relative ml-4 space-y-10 border-l border-white/10 pl-9">
+			<div className="pt-7 md:hidden">
+				<div className="relative ml-3 space-y-9 border-l border-white/10 pl-9">
 					{items.map((item, index) => {
 						const shift = mobileOffsets[index % mobileOffsets.length]
 						return (

@@ -45,7 +45,8 @@ type SectionTone = LearnPathTone & {
 
 const sectionTones: SectionTone[] = [
 	{
-		header: 'bg-orange-400 shadow-[inset_0_-3px_0_rgba(154,86,0,0.28),0_12px_28px_rgba(8,19,28,0.24)]',
+		header:
+			'bg-orange-400 shadow-[inset_0_-3px_0_rgba(154,86,0,0.28),0_12px_28px_rgba(8,19,28,0.24)]',
 		// headerButton: 'bg-orange-300/20 hover:bg-white/12',
 		headerButton: 'bg-[#091520]  bg-orange-300/20 hover:bg-white/12',
 		headerButtonBorder: 'border-orange-500/45',
@@ -62,7 +63,8 @@ const sectionTones: SectionTone[] = [
 		pathFirst: '#7c8793',
 	},
 	{
-		header: 'bg-rose-500 shadow-[inset_0_-3px_0_rgba(136,19,55,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
+		header:
+			'bg-rose-500 shadow-[inset_0_-3px_0_rgba(136,19,55,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
 		headerButton: 'bg-rose-300/18 hover:bg-white/12',
 		headerButtonBorder: 'border-rose-700/35',
 		availableNode: 'border-rose-300/20 bg-rose-500 text-white',
@@ -78,7 +80,8 @@ const sectionTones: SectionTone[] = [
 		pathFirst: '#87919d',
 	},
 	{
-		header: 'bg-sky-500 shadow-[inset_0_-3px_0_rgba(12,74,110,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
+		header:
+			'bg-sky-500 shadow-[inset_0_-3px_0_rgba(12,74,110,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
 		headerButton: 'bg-sky-300/18 hover:bg-white/12',
 		headerButtonBorder: 'border-sky-700/35',
 		availableNode: 'border-sky-300/20 bg-sky-500 text-white',
@@ -94,7 +97,8 @@ const sectionTones: SectionTone[] = [
 		pathFirst: '#7f93a4',
 	},
 	{
-		header: 'bg-emerald-500 shadow-[inset_0_-3px_0_rgba(6,95,70,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
+		header:
+			'bg-emerald-500 shadow-[inset_0_-3px_0_rgba(6,95,70,0.3),0_12px_28px_rgba(8,19,28,0.24)]',
 		headerButton: 'bg-emerald-300/18 hover:bg-white/12',
 		headerButtonBorder: 'border-emerald-700/35',
 		availableNode: 'border-emerald-300/20 bg-emerald-500 text-white',
@@ -125,7 +129,7 @@ function SectionPathHeader({
 	return (
 		<div
 			className={cn(
-				'sticky top-20 z-30 mx-auto w-full max-w-[592px] rounded-2xl px-4 py-4 text-white sm:px-5',
+				'sticky top-[4.25rem] z-30 mx-auto w-full max-w-[592px] rounded-2xl px-3 py-3 text-white sm:px-5 sm:py-4 lg:top-20',
 				tone.header
 			)}
 		>
@@ -135,7 +139,7 @@ function SectionPathHeader({
 						<ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
 						<span>Section {unitView.unit.order}</span>
 					</div>
-					<h2 className="mt-2 truncate text-lg font-black tracking-tight sm:text-xl">
+					<h2 className="mt-1.5 truncate text-base font-black tracking-tight sm:mt-2 sm:text-xl">
 						{unitView.unit.bannerTitle}
 					</h2>
 				</div>
@@ -189,7 +193,9 @@ function SummaryCell({
 	className?: string
 	children: ReactNode
 }) {
-	return <div className={cn('px-5 py-6 sm:px-7', className)}>{children}</div>
+	return (
+		<div className={cn('px-4 py-5 sm:px-7 sm:py-6', className)}>{children}</div>
+	)
 }
 
 function QuestIcon({ quest }: { quest: Quest }) {
@@ -266,12 +272,12 @@ function LearnSideRail({
 	return (
 		<Card className="overflow-hidden border-white/10 bg-[#121e29] shadow-none">
 			<div className="space-y-0">
-				<div className="flex items-start justify-between gap-4 px-6 py-6">
+				<div className="flex items-start justify-between gap-4 px-4 py-5 sm:px-6 sm:py-6">
 					<div>
-						<h2 className="text-[2rem] font-black tracking-tight text-white">
+						<h2 className="text-2xl font-black tracking-tight text-white sm:text-[2rem]">
 							Daily chest
 						</h2>
-						<p className="mt-3 max-w-[14rem] text-lg leading-8 text-white/70">
+						<p className="mt-2 max-w-[14rem] text-sm leading-6 text-white/70 sm:mt-3 sm:text-lg sm:leading-8">
 							{dailyChestState === 'locked'
 								? "Complete a lesson or review to unlock today's reward."
 								: dailyChestState === 'ready'
@@ -279,11 +285,11 @@ function LearnSideRail({
 									: "You already opened today's chest. Come back tomorrow."}
 						</p>
 					</div>
-					<div className="flex size-24 shrink-0 items-center justify-center rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_transparent_55%),linear-gradient(180deg,#5dafff_0%,#2d68ca_100%)] shadow-[inset_0_2px_0_rgba(255,255,255,0.22)]">
-						<Gift className="size-11 text-white" />
+					<div className="flex size-16 shrink-0 items-center justify-center rounded-[22px] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_transparent_55%),linear-gradient(180deg,#5dafff_0%,#2d68ca_100%)] shadow-[inset_0_2px_0_rgba(255,255,255,0.22)] sm:size-24 sm:rounded-[28px]">
+						<Gift className="size-8 text-white sm:size-11" />
 					</div>
 				</div>
-				<div className="px-6 pb-6">
+				<div className="px-4 pb-5 sm:px-6 sm:pb-6">
 					<Button
 						type="button"
 						className="h-12 w-full rounded-2xl bg-[#2f7ce7] text-base font-semibold text-white hover:bg-[#4289ec]"
@@ -296,10 +302,10 @@ function LearnSideRail({
 
 				<div className="border-t border-white/8 px-4 py-5">
 					<div className="px-2">
-						<h3 className="text-[1.9rem] font-black tracking-tight text-white">
+						<h3 className="text-2xl font-black tracking-tight text-white sm:text-[1.9rem]">
 							Quests
 						</h3>
-						<p className="mt-2 text-lg leading-8 text-white/70">
+						<p className="mt-2 text-sm leading-6 text-white/70 sm:text-lg sm:leading-8">
 							Complete quests to earn XP!
 						</p>
 						<p className="mt-1 text-sm text-white/42">Refreshes daily</p>
@@ -447,7 +453,7 @@ export function LearnPage() {
 	}
 
 	return (
-		<div className="mx-auto max-w-[1440px] space-y-6">
+		<div className="mx-auto max-w-[1440px] space-y-5 sm:space-y-6">
 			<Dialog
 				open={Boolean(chestReward)}
 				onOpenChange={(open) => !open && setChestReward(null)}
@@ -494,12 +500,12 @@ export function LearnPage() {
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex items-start justify-between gap-6">
+			<div className="flex items-start justify-between gap-4 sm:gap-6">
 				<div>
-					<h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+					<h1 className="text-3xl font-black tracking-tight text-white sm:text-5xl">
 						Learn
 					</h1>
-					<p className="mt-2 text-lg text-white/68">
+					<p className="mt-1 text-base text-white/68 sm:mt-2 sm:text-lg">
 						Your path to Tagalog fluency
 					</p>
 				</div>
@@ -512,8 +518,8 @@ export function LearnPage() {
 			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
 				<div className="space-y-6">
 					<Card className="overflow-hidden border-white/10 bg-[#121d28] shadow-none">
-						<div className="grid divide-y divide-white/8 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
-							<SummaryCell className="flex items-center gap-5">
+						<div className="grid divide-y divide-white/8 md:grid-cols-2 md:divide-x md:divide-y-0 lg:grid-cols-4">
+							<SummaryCell className="flex items-center gap-4 sm:gap-5">
 								<CircularGoal
 									value={goalProgress}
 									current={snapshot.profile.dailyGoal.currentXp}
@@ -521,10 +527,10 @@ export function LearnPage() {
 								/>
 								<div>
 									<p className="text-sm font-medium text-white/56">Daily XP</p>
-									<p className="mt-3 text-2xl font-black text-white">
+									<p className="mt-2 text-xl font-black text-white sm:mt-3 sm:text-2xl">
 										You're on track!
 									</p>
-									<p className="mt-1 max-w-[12rem] text-lg leading-7 text-white/68">
+									<p className="mt-1 max-w-[12rem] text-sm leading-6 text-white/68 sm:text-lg sm:leading-7">
 										Keep it up to reach your goal.
 									</p>
 								</div>
@@ -535,10 +541,10 @@ export function LearnPage() {
 									<span>Next lesson</span>
 									<span className="size-3 rounded-full bg-lime-400" />
 								</div>
-								<p className="mt-3 text-[2rem] font-black tracking-tight text-white">
+								<p className="mt-2 text-2xl font-black tracking-tight text-white sm:mt-3 sm:text-[2rem]">
 									{nextLesson?.lesson.title ?? 'Keep going'}
 								</p>
-								<p className="mt-1 max-w-[18rem] text-lg leading-7 text-white/68">
+								<p className="mt-1 max-w-[18rem] text-sm leading-6 text-white/68 sm:text-lg sm:leading-7">
 									{nextLesson?.lesson.description ??
 										'Pick up where you left off and keep progressing.'}
 								</p>
@@ -559,17 +565,17 @@ export function LearnPage() {
 									<span>Review due</span>
 									<span className="size-3 rounded-full bg-amber-400" />
 								</div>
-								<div className="mt-4 flex items-center gap-5">
-									<div className="flex size-24 items-center justify-center rounded-full bg-white/6 text-center">
+								<div className="mt-4 flex items-center gap-4 sm:gap-5">
+									<div className="flex size-20 items-center justify-center rounded-full bg-white/6 text-center sm:size-24">
 										<div>
-											<p className="text-[2rem] font-black leading-none text-white">
+											<p className="text-2xl font-black leading-none text-white sm:text-[2rem]">
 												{dueReview}
 											</p>
 											<p className="mt-1 text-sm text-white/56">cards</p>
 										</div>
 									</div>
 									<div>
-										<p className="max-w-[11rem] text-lg leading-7 text-white/68">
+										<p className="max-w-[11rem] text-sm leading-6 text-white/68 sm:text-lg sm:leading-7">
 											Review to keep your streak strong.
 										</p>
 										<Button
@@ -587,13 +593,13 @@ export function LearnPage() {
 								<p className="text-sm font-medium text-white/56">
 									Current section
 								</p>
-								<p className="mt-3 text-[2rem] font-black tracking-tight text-white">
+								<p className="mt-2 text-2xl font-black tracking-tight text-white sm:mt-3 sm:text-[2rem]">
 									Section {activeUnitView?.unit.order ?? 1}
 								</p>
-								<p className="mt-1 text-[1.7rem] font-medium text-white/72">
+								<p className="mt-1 text-xl font-medium text-white/72 sm:text-[1.7rem]">
 									{activeUnitView?.unit.title}
 								</p>
-								<div className="mt-6 flex items-center gap-4">
+								<div className="mt-5 flex items-center gap-3 sm:mt-6 sm:gap-4">
 									<Progress
 										value={
 											activeUnitLessons.length
@@ -603,7 +609,7 @@ export function LearnPage() {
 										}
 										className="h-3 bg-white/8"
 									/>
-									<span className="shrink-0 text-base text-white/58">
+									<span className="shrink-0 text-sm text-white/58 sm:text-base">
 										{completedUnitLessons} / {activeUnitLessons.length} lessons
 									</span>
 								</div>
@@ -620,7 +626,7 @@ export function LearnPage() {
 						/>
 					</div>
 
-					<div className="mx-auto max-w-[920px] rounded-[32px] bg-[#091520] px-4 py-5 sm:px-6 lg:px-8">
+					<div className="-mx-3 rounded-none bg-[#091520] px-3 py-4 sm:mx-auto sm:max-w-[920px] sm:rounded-[32px] sm:px-6 sm:py-5 lg:px-8">
 						{activeHeaderUnit ? (
 							<SectionPathHeader
 								unitView={activeHeaderUnit}
