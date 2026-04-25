@@ -38,23 +38,25 @@ export function StatPill({ kind, value, className }: StatPillProps) {
 	return (
 		<div
 			className={cn(
-				'flex items-center gap-3 rounded-2xl px-1 py-1 text-white',
+				'flex min-w-0 items-center gap-1.5 rounded-2xl px-0.5 py-1 text-white sm:gap-3 sm:px-1',
 				className
 			)}
 		>
 			<div
 				className={cn(
-					'flex size-10 items-center justify-center rounded-full border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]',
+					'flex size-8 items-center justify-center rounded-full border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:size-10',
 					item.iconWrap
 				)}
 			>
-				<Icon className="size-5 fill-current" />
+				<Icon className="size-4 fill-current sm:size-5" />
 			</div>
-			<div className="leading-tight">
-				<p className="text-xl font-black tracking-tight text-white">
+			<div className="leading-tight max-[359px]:hidden">
+				<p className="text-base font-black tracking-tight text-white sm:text-xl">
 					{value.toLocaleString()}
 				</p>
-				<p className="text-xs font-medium text-white/65">{item.label}</p>
+				<p className="hidden text-xs font-medium text-white/65 sm:block">
+					{item.label}
+				</p>
 			</div>
 		</div>
 	)
