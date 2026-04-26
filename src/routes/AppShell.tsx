@@ -11,6 +11,8 @@ import { useAuthStore } from '@/store/use-auth-store'
 export function AppShell() {
 	const snapshot = useAppStore((state) => state.snapshot)
 	const loading = useAppStore((state) => state.loading)
+	const saving = useAppStore((state) => state.saving)
+	const useShopItem = useAppStore((state) => state.useShopItem)
 	const user = useAuthStore((state) => state.user)
 	const authLoading = useAuthStore((state) => state.loading)
 
@@ -55,12 +57,14 @@ export function AppShell() {
 				<DesktopSidebar />
 				<div className="min-h-screen min-w-0 flex-1 pb-24 lg:pb-0">
 					<TopStatusBar
-						xp={snapshot.profile.xp}
 						points={snapshot.profile.points}
 						streak={snapshot.profile.streak}
 						hearts={snapshot.profile.hearts}
+						inventory={snapshot.inventory}
 						lastActiveOn={snapshot.profile.lastActiveOn}
+						saving={saving}
 						loading={loading || authLoading}
+						useShopItem={useShopItem}
 					/>
 					<motion.main
 						initial={{ opacity: 0, y: 18 }}

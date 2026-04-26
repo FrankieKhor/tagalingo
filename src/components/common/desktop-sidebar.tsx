@@ -26,7 +26,7 @@ export function DesktopSidebar() {
 	return (
 		<aside className="sticky top-0 z-30 hidden h-screen w-[236px] shrink-0 border-r border-white/8 bg-[#0c1620] px-4 py-7 text-white lg:flex lg:flex-col">
 			<div className="mb-9 px-3">
-				<p className="text-[3rem] font-black tracking-tight text-lime-400">
+				<p className="text-[2.55rem] font-black leading-none tracking-tight text-lime-400">
 					tagalingo
 				</p>
 				<p className="mt-1 text-sm text-white/68">Learn Tagalog</p>
