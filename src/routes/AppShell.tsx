@@ -59,6 +59,7 @@ export function AppShell() {
 						points={snapshot.profile.points}
 						streak={snapshot.profile.streak}
 						hearts={snapshot.profile.hearts}
+						lastActiveOn={snapshot.profile.lastActiveOn}
 						loading={loading || authLoading}
 					/>
 					<motion.main
