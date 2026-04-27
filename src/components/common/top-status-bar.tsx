@@ -26,6 +26,8 @@ type TopStatusBarProps = {
 	) => Promise<ProgressSnapshot>
 }
 
+type ActiveStatusPopover = 'streak' | 'gems' | 'hearts' | null
+
 function StreakHoverPanel({
 	streak,
 	lastActiveOn,
@@ -169,11 +171,14 @@ function StreakHoverPanel({
 function StreakStatusItem({
 	streak,
 	lastActiveOn,
+	open,
+	onOpenChange,
 }: {
 	streak: number
 	lastActiveOn?: string
+	open: boolean
+	onOpenChange: (open: boolean) => void
 }) {
-	const [open, setOpen] = useState(false)
 	const itemRef = useRef<HTMLDivElement | null>(null)
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -188,13 +193,13 @@ function StreakStatusItem({
 				event.target instanceof Node &&
 				!itemRef.current.contains(event.target)
 			) {
-				setOpen(false)
+				onOpenChange(false)
 			}
 		}
 
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === 'Escape') {
-				setOpen(false)
+				onOpenChange(false)
 			}
 		}
 
@@ -205,7 +210,7 @@ function StreakStatusItem({
 			document.removeEventListener('pointerdown', handlePointerDown)
 			document.removeEventListener('keydown', handleKeyDown)
 		}
-	}, [open])
+	}, [onOpenChange, open])
 
 	useEffect(() => {
 		return () => {
@@ -225,7 +230,7 @@ function StreakStatusItem({
 	function scheduleHoverClose() {
 		clearHoverClose()
 		closeTimerRef.current = setTimeout(() => {
-			setOpen(false)
+			onOpenChange(false)
 		}, 180)
 	}
 
@@ -236,7 +241,7 @@ function StreakStatusItem({
 			onPointerEnter={(event) => {
 				if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
 					clearHoverClose()
-					setOpen(true)
+					onOpenChange(true)
 				}
 			}}
 			onPointerLeave={(event) => {
@@ -244,10 +249,10 @@ function StreakStatusItem({
 					scheduleHoverClose()
 				}
 			}}
-			onFocus={() => setOpen(true)}
+			onFocus={() => onOpenChange(true)}
 			onBlur={(event) => {
 				if (!event.currentTarget.contains(event.relatedTarget)) {
-					setOpen(false)
+					onOpenChange(false)
 				}
 			}}
 		>
@@ -259,7 +264,7 @@ function StreakStatusItem({
 				)}
 				aria-expanded={open}
 				aria-haspopup="dialog"
-				onClick={() => setOpen((current) => !current)}
+				onClick={() => onOpenChange(!open)}
 			>
 				<StreakFlame
 					streak={streak}
@@ -274,7 +279,7 @@ function StreakStatusItem({
 				<StreakHoverPanel
 					streak={streak}
 					lastActiveOn={lastActiveOn}
-					onClose={() => setOpen(false)}
+					onClose={() => onOpenChange(false)}
 				/>
 			) : null}
 		</div>
@@ -319,8 +324,15 @@ function GemsHoverPanel({
 	)
 }
 
-function GemsStatusItem({ points }: { points: number }) {
-	const [open, setOpen] = useState(false)
+function GemsStatusItem({
+	points,
+	open,
+	onOpenChange,
+}: {
+	points: number
+	open: boolean
+	onOpenChange: (open: boolean) => void
+}) {
 	const itemRef = useRef<HTMLDivElement | null>(null)
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -335,13 +347,13 @@ function GemsStatusItem({ points }: { points: number }) {
 				event.target instanceof Node &&
 				!itemRef.current.contains(event.target)
 			) {
-				setOpen(false)
+				onOpenChange(false)
 			}
 		}
 
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === 'Escape') {
-				setOpen(false)
+				onOpenChange(false)
 			}
 		}
 
@@ -352,7 +364,7 @@ function GemsStatusItem({ points }: { points: number }) {
 			document.removeEventListener('pointerdown', handlePointerDown)
 			document.removeEventListener('keydown', handleKeyDown)
 		}
-	}, [open])
+	}, [onOpenChange, open])
 
 	useEffect(() => {
 		return () => {
@@ -372,7 +384,7 @@ function GemsStatusItem({ points }: { points: number }) {
 	function scheduleHoverClose() {
 		clearHoverClose()
 		closeTimerRef.current = setTimeout(() => {
-			setOpen(false)
+			onOpenChange(false)
 		}, 180)
 	}
 
@@ -383,7 +395,7 @@ function GemsStatusItem({ points }: { points: number }) {
 			onPointerEnter={(event) => {
 				if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
 					clearHoverClose()
-					setOpen(true)
+					onOpenChange(true)
 				}
 			}}
 			onPointerLeave={(event) => {
@@ -391,10 +403,10 @@ function GemsStatusItem({ points }: { points: number }) {
 					scheduleHoverClose()
 				}
 			}}
-			onFocus={() => setOpen(true)}
+			onFocus={() => onOpenChange(true)}
 			onBlur={(event) => {
 				if (!event.currentTarget.contains(event.relatedTarget)) {
-					setOpen(false)
+					onOpenChange(false)
 				}
 			}}
 		>
@@ -407,7 +419,7 @@ function GemsStatusItem({ points }: { points: number }) {
 				aria-expanded={open}
 				aria-haspopup="dialog"
 				aria-label={`${points.toLocaleString()} gems`}
-				onClick={() => setOpen((current) => !current)}
+				onClick={() => onOpenChange(!open)}
 			>
 				<span className="flex size-8 items-center justify-center rounded-full bg-cyan-500/18 text-cyan-300 sm:size-9">
 					<Gem className="size-5 fill-current" />
@@ -417,7 +429,7 @@ function GemsStatusItem({ points }: { points: number }) {
 				</span>
 			</button>
 			{open ? (
-				<GemsHoverPanel points={points} onClose={() => setOpen(false)} />
+				<GemsHoverPanel points={points} onClose={() => onOpenChange(false)} />
 			) : null}
 		</div>
 	)
@@ -527,13 +539,13 @@ function HeartsHoverPanel({
 	hearts,
 	inventory,
 	saving,
-	useShopItem,
+	onUseShopItem,
 	onClose,
 }: {
 	hearts: number
 	inventory: ProgressSnapshot['inventory']
 	saving: boolean
-	useShopItem: TopStatusBarProps['useShopItem']
+	onUseShopItem: TopStatusBarProps['useShopItem']
 	onClose: () => void
 }) {
 	const isFull = hearts >= MAX_HEARTS
@@ -543,7 +555,7 @@ function HeartsHoverPanel({
 	function handleUseItem(
 		itemId: Extract<ShopItemId, 'heart-refill' | 'heart-snack'>
 	) {
-		void useShopItem(itemId)
+		void onUseShopItem(itemId)
 			.then(() => {
 				onClose()
 			})
@@ -624,14 +636,17 @@ function HeartStatusItem({
 	hearts,
 	inventory,
 	saving,
-	useShopItem,
+	onUseShopItem,
+	open,
+	onOpenChange,
 }: {
 	hearts: number
 	inventory: ProgressSnapshot['inventory']
 	saving: boolean
-	useShopItem: TopStatusBarProps['useShopItem']
+	onUseShopItem: TopStatusBarProps['useShopItem']
+	open: boolean
+	onOpenChange: (open: boolean) => void
 }) {
-	const [open, setOpen] = useState(false)
 	const itemRef = useRef<HTMLDivElement | null>(null)
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -646,13 +661,13 @@ function HeartStatusItem({
 				event.target instanceof Node &&
 				!itemRef.current.contains(event.target)
 			) {
-				setOpen(false)
+				onOpenChange(false)
 			}
 		}
 
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === 'Escape') {
-				setOpen(false)
+				onOpenChange(false)
 			}
 		}
 
@@ -663,7 +678,7 @@ function HeartStatusItem({
 			document.removeEventListener('pointerdown', handlePointerDown)
 			document.removeEventListener('keydown', handleKeyDown)
 		}
-	}, [open])
+	}, [onOpenChange, open])
 
 	useEffect(() => {
 		return () => {
@@ -683,7 +698,7 @@ function HeartStatusItem({
 	function scheduleHoverClose() {
 		clearHoverClose()
 		closeTimerRef.current = setTimeout(() => {
-			setOpen(false)
+			onOpenChange(false)
 		}, 180)
 	}
 
@@ -694,7 +709,7 @@ function HeartStatusItem({
 			onPointerEnter={(event) => {
 				if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
 					clearHoverClose()
-					setOpen(true)
+					onOpenChange(true)
 				}
 			}}
 			onPointerLeave={(event) => {
@@ -702,10 +717,10 @@ function HeartStatusItem({
 					scheduleHoverClose()
 				}
 			}}
-			onFocus={() => setOpen(true)}
+			onFocus={() => onOpenChange(true)}
 			onBlur={(event) => {
 				if (!event.currentTarget.contains(event.relatedTarget)) {
-					setOpen(false)
+					onOpenChange(false)
 				}
 			}}
 		>
@@ -718,7 +733,7 @@ function HeartStatusItem({
 				aria-expanded={open}
 				aria-haspopup="dialog"
 				aria-label={`${hearts} of ${MAX_HEARTS} hearts`}
-				onClick={() => setOpen((current) => !current)}
+				onClick={() => onOpenChange(!open)}
 			>
 				<Heart className="size-7 fill-rose-500 text-rose-500 stroke-none sm:size-8" />
 				<span className="text-base font-black text-rose-300 sm:text-lg">
@@ -730,8 +745,8 @@ function HeartStatusItem({
 					hearts={hearts}
 					inventory={inventory}
 					saving={saving}
-					useShopItem={useShopItem}
-					onClose={() => setOpen(false)}
+					onUseShopItem={onUseShopItem}
+					onClose={() => onOpenChange(false)}
 				/>
 			) : null}
 		</div>
@@ -748,6 +763,20 @@ export function TopStatusBar({
 	loading = false,
 	useShopItem,
 }: TopStatusBarProps) {
+	const [activePopover, setActivePopover] = useState<ActiveStatusPopover>(null)
+
+	function setPopoverOpen(popover: Exclude<ActiveStatusPopover, null>) {
+		return (open: boolean) => {
+			setActivePopover((current) => {
+				if (open) {
+					return popover
+				}
+
+				return current === popover ? null : current
+			})
+		}
+	}
+
 	return (
 		<div className="sticky top-0 z-40 border-b border-white/8 bg-[#09131d]/90 backdrop-blur-xl">
 			<div className="mx-auto flex max-w-[1440px] items-center justify-between gap-2 px-3 py-2 sm:px-4 lg:px-8">
@@ -758,13 +787,24 @@ export function TopStatusBar({
 							Syncing
 						</div>
 					) : null}
-					<StreakStatusItem streak={streak} lastActiveOn={lastActiveOn} />
-					<GemsStatusItem points={points} />
+					<StreakStatusItem
+						streak={streak}
+						lastActiveOn={lastActiveOn}
+						open={activePopover === 'streak'}
+						onOpenChange={setPopoverOpen('streak')}
+					/>
+					<GemsStatusItem
+						points={points}
+						open={activePopover === 'gems'}
+						onOpenChange={setPopoverOpen('gems')}
+					/>
 					<HeartStatusItem
 						hearts={hearts}
 						inventory={inventory}
 						saving={saving}
-						useShopItem={useShopItem}
+						onUseShopItem={useShopItem}
+						open={activePopover === 'hearts'}
+						onOpenChange={setPopoverOpen('hearts')}
 					/>
 				</div>
 			</div>
