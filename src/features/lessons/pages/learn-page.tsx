@@ -1,5 +1,6 @@
 import {
 	ArrowLeft,
+	Bird,
 	BookOpen,
 	Coins,
 	Flame,
@@ -126,37 +127,120 @@ function SectionPathHeader({
 	unitView: LearnUnitViewModel
 	tone: SectionTone
 }) {
+	const [isGuidebookOpen, setIsGuidebookOpen] = useState(false)
+	const guidebookHighlights =
+		unitView.unit.guidebookHighlights ??
+		unitView.unit.categories
+			.filter((category) => category.hasGuidebook)
+			.flatMap((category) =>
+				category.lessons.flatMap((lesson) =>
+					lesson.introCards.map((card) => `${card.tagalog}: ${card.meaning}`)
+				)
+			)
+			.slice(0, 3)
+	const guidebookPhrases = guidebookHighlights.map((highlight) => {
+		const [phrase, ...translationParts] = highlight.split(':')
+
+		return {
+			phrase: phrase.trim(),
+			translation: translationParts.join(':').trim(),
+		}
+	})
+
 	return (
-		<div
-			className={cn(
-				'sticky top-[4.25rem] z-30 mx-auto w-full max-w-[592px] rounded-2xl px-3 py-3 text-white sm:px-5 sm:py-4 lg:top-20',
-				tone.header
-			)}
-		>
-			<div className="flex items-center justify-between gap-3">
-				<div className="min-w-0">
-					<div className="flex items-center gap-2 text-xs font-black uppercase">
-						<ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-						<span>Section {unitView.unit.order}</span>
+		<Dialog open={isGuidebookOpen} onOpenChange={setIsGuidebookOpen}>
+			<div
+				className={cn(
+					'sticky top-[4.25rem] z-30 mx-auto w-full max-w-[592px] rounded-2xl px-3 py-3 text-white sm:px-5 sm:py-4 lg:top-20',
+					tone.header
+				)}
+			>
+				<div className="flex items-center justify-between gap-3">
+					<div className="min-w-0">
+						<div className="flex items-center gap-2 text-xs font-black uppercase">
+							<ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+							<span>Section {unitView.unit.order}</span>
+						</div>
+						<h2 className="mt-1.5 truncate text-base font-black tracking-tight sm:mt-2 sm:text-xl">
+							{unitView.unit.bannerTitle}
+						</h2>
 					</div>
-					<h2 className="mt-1.5 truncate text-base font-black tracking-tight sm:mt-2 sm:text-xl">
-						{unitView.unit.bannerTitle}
-					</h2>
+					{guidebookHighlights.length > 0 ? (
+						<button
+							type="button"
+							className={cn(
+								'flex size-11 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[inset_0_-3px_0_rgba(8,19,28,0.16)] transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+								tone.headerButton,
+								tone.headerButtonBorder
+							)}
+							aria-label={`Open Unit ${unitView.unit.order} guidebook`}
+							aria-haspopup="dialog"
+							onClick={() => setIsGuidebookOpen(true)}
+							title="Guidebook"
+						>
+							<BookOpen className="size-5" aria-hidden="true" />
+						</button>
+					) : null}
 				</div>
-				<button
-					type="button"
-					className={cn(
-						'h-12 shrink-0 items-center gap-2 rounded-2xl border-2 px-4 text-sm font-black uppercase shadow-[inset_0_-3px_0_rgba(8,19,28,0.16)] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:flex',
-						'hidden',
-						tone.headerButton,
-						tone.headerButtonBorder
-					)}
-				>
-					<BookOpen className="size-5" aria-hidden="true" />
-					Guidebook
-				</button>
 			</div>
-		</div>
+			{guidebookHighlights.length > 0 ? (
+				<DialogContent className="max-h-[min(760px,calc(100vh-2rem))] max-w-2xl overflow-y-auto border border-[#354955] bg-[#102027] px-5 py-7 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:px-8 sm:py-8">
+					<DialogHeader className="mb-7 border-b border-[#354955] pb-7 pr-8">
+						<div className="flex items-center gap-5">
+							<div className="relative flex size-24 shrink-0 items-center justify-center sm:size-28">
+								<div className="absolute bottom-1 size-20 rounded-full bg-black/30 sm:size-24" />
+								<div className="relative flex size-20 items-center justify-center rounded-[1.6rem] bg-lime-500 text-white shadow-[inset_0_-6px_0_rgba(20,83,45,0.28)] sm:size-24">
+									<Bird
+										className="size-14 fill-white/15 text-white sm:size-16"
+										aria-hidden="true"
+									/>
+									<div className="absolute left-5 top-6 size-6 rounded-full bg-white sm:left-6 sm:top-7 sm:size-7">
+										<div className="ml-3 mt-1 size-3 rounded-full bg-slate-700 sm:size-3.5" />
+									</div>
+									<div className="absolute right-4 top-4 size-5 rounded-full bg-white sm:right-5 sm:top-5 sm:size-6">
+										<div className="ml-2.5 mt-1 size-2.5 rounded-full bg-slate-700 sm:size-3" />
+									</div>
+								</div>
+							</div>
+							<div className="min-w-0">
+								<DialogTitle className="text-2xl font-black leading-tight text-white sm:text-3xl">
+									Unit {unitView.unit.order} Guidebook
+								</DialogTitle>
+								<DialogDescription className="mt-2 text-base font-bold leading-snug text-white/85 sm:text-lg">
+									Explore grammar tips and key phrases for this unit
+								</DialogDescription>
+							</div>
+						</div>
+					</DialogHeader>
+					<div className="max-w-[440px] space-y-4">
+						<p className="text-sm font-black uppercase text-sky-300">
+							Key phrases
+						</p>
+						<div className="space-y-5">
+							{guidebookPhrases.map(({ phrase, translation }) => (
+								<div
+									key={`${phrase}-${translation}`}
+									className="relative w-fit max-w-full rounded-2xl border-2 border-[#354955] bg-[#102027] px-4 py-4 pl-14 shadow-[inset_0_-2px_0_rgba(255,255,255,0.02)] before:absolute before:left-[-10px] before:top-6 before:size-5 before:rotate-45 before:border-b-2 before:border-l-2 before:border-[#354955] before:bg-[#102027]"
+								>
+									<Volume2
+										className="absolute left-4 top-4 size-7 fill-sky-400 text-sky-400"
+										aria-hidden="true"
+									/>
+									<p className="w-fit max-w-full border-b-2 border-dotted border-white/45 pr-1 text-base font-black leading-snug text-white">
+										{phrase}
+									</p>
+									{translation ? (
+										<p className="mt-2 text-base font-bold leading-snug text-slate-500">
+											{translation}
+										</p>
+									) : null}
+								</div>
+							))}
+						</div>
+					</div>
+				</DialogContent>
+			) : null}
+		</Dialog>
 	)
 }
 
@@ -175,12 +259,14 @@ function CircularGoal({
 		<div
 			className="relative flex size-[110px] items-center justify-center rounded-full"
 			style={{
-				background: `conic-gradient(#84cc16 0deg ${progressDegrees}deg, rgba(255,255,255,0.08) ${progressDegrees}deg 360deg)`,
+				background: `conic-gradient(#84cc16 0deg ${progressDegrees}deg, rgba(148,163,184,0.28) ${progressDegrees}deg 360deg)`,
 			}}
 		>
-			<div className="flex size-[82px] flex-col items-center justify-center rounded-full bg-[#15212d] text-white">
+			<div className="flex size-[82px] flex-col items-center justify-center rounded-full bg-white text-slate-950 shadow-inner dark:bg-[#15212d] dark:text-white">
 				<p className="text-[2rem] font-black leading-none">{current}</p>
-				<p className="mt-1 text-sm text-white/62">/{target} XP</p>
+				<p className="mt-1 text-sm text-slate-500 dark:text-white/62">
+					/{target} XP
+				</p>
 			</div>
 		</div>
 	)
@@ -224,21 +310,26 @@ function QuestRailRow({
 	const progressValue = Math.min((quest.progress / quest.target) * 100, 100)
 
 	return (
-		<div className="rounded-[22px] bg-white/4 p-4">
+		<div className="rounded-[22px] bg-slate-50 p-4 dark:bg-white/4">
 			<div className="flex items-start gap-3">
 				<div className="mt-1 flex size-12 shrink-0 items-center justify-center rounded-full bg-lime-400 text-[#12202d]">
 					<QuestIcon quest={quest} />
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-3">
-						<p className="text-sm font-semibold text-white/92">{quest.title}</p>
+						<p className="text-sm font-semibold text-slate-900 dark:text-white/92">
+							{quest.title}
+						</p>
 						<p className="shrink-0 text-sm font-semibold text-lime-400">
 							+{quest.rewardPoints} XP
 						</p>
 					</div>
 					<div className="mt-3 flex items-center gap-3">
-						<Progress value={progressValue} className="h-2 bg-white/8" />
-						<span className="text-sm text-white/58">
+						<Progress
+							value={progressValue}
+							className="h-2 bg-slate-200 dark:bg-white/8"
+						/>
+						<span className="text-sm text-slate-500 dark:text-white/58">
 							{quest.progress} / {quest.target}
 						</span>
 					</div>
@@ -270,14 +361,14 @@ function LearnSideRail({
 	onOpenDailyChest: () => void | Promise<void>
 }) {
 	return (
-		<Card className="overflow-hidden border-white/10 bg-[#121e29] shadow-none">
+		<Card className="overflow-hidden border-slate-200/80 bg-white/88 shadow-sm dark:border-white/10 dark:bg-[#121e29] dark:shadow-none">
 			<div className="space-y-0">
 				<div className="flex items-start justify-between gap-4 px-4 py-5 sm:px-6 sm:py-6">
 					<div>
-						<h2 className="text-2xl font-black tracking-tight text-white sm:text-[2rem]">
+						<h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-[2rem]">
 							Daily chest
 						</h2>
-						<p className="mt-2 max-w-[14rem] text-sm leading-6 text-white/70 sm:mt-3 sm:text-lg sm:leading-8">
+						<p className="mt-2 max-w-[14rem] text-sm leading-6 text-slate-600 dark:text-white/70 sm:mt-3 sm:text-lg sm:leading-8">
 							{dailyChestState === 'locked'
 								? "Complete a lesson or review to unlock today's reward."
 								: dailyChestState === 'ready'
@@ -300,15 +391,17 @@ function LearnSideRail({
 					</Button>
 				</div>
 
-				<div className="border-t border-white/8 px-4 py-5">
+				<div className="border-t border-slate-200/80 px-4 py-5 dark:border-white/8">
 					<div className="px-2">
-						<h3 className="text-2xl font-black tracking-tight text-white sm:text-[1.9rem]">
+						<h3 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-[1.9rem]">
 							Quests
 						</h3>
-						<p className="mt-2 text-sm leading-6 text-white/70 sm:text-lg sm:leading-8">
+						<p className="mt-2 text-sm leading-6 text-slate-600 dark:text-white/70 sm:text-lg sm:leading-8">
 							Complete quests to earn XP!
 						</p>
-						<p className="mt-1 text-sm text-white/42">Refreshes daily</p>
+						<p className="mt-1 text-sm text-slate-400 dark:text-white/42">
+							Refreshes daily
+						</p>
 					</div>
 
 					<div className="mt-5 space-y-3">
@@ -320,7 +413,7 @@ function LearnSideRail({
 					<Button
 						asChild
 						variant="outline"
-						className="mt-5 h-12 w-full rounded-2xl border-white/12 bg-transparent text-base text-[#57a8ff] hover:bg-white/5 hover:text-[#83c0ff]"
+						className="mt-5 h-12 w-full rounded-2xl border-slate-200 bg-white text-base text-sky-600 hover:bg-sky-50 hover:text-sky-700 dark:border-white/12 dark:bg-transparent dark:text-[#57a8ff] dark:hover:bg-white/5 dark:hover:text-[#83c0ff]"
 					>
 						<Link to="/quests">View all quests</Link>
 					</Button>
@@ -458,7 +551,7 @@ export function LearnPage() {
 				open={Boolean(chestReward)}
 				onOpenChange={(open) => !open && setChestReward(null)}
 			>
-				<DialogContent className="max-w-md rounded-[32px] border-white/10 bg-[#12202c] text-white">
+				<DialogContent className="max-w-md rounded-[32px] border-slate-200 bg-white text-slate-950 dark:border-white/10 dark:bg-[#12202c] dark:text-white">
 					<DialogHeader className="items-center text-center">
 						<div
 							className={cn(
@@ -468,30 +561,30 @@ export function LearnPage() {
 						>
 							{rewardPresentation?.icon}
 						</div>
-						<div className="rounded-full bg-white/8 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-sky-200">
+						<div className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-sky-700 dark:bg-white/8 dark:text-sky-200">
 							{chestReward?.source === 'daily'
 								? 'Daily chest'
 								: 'Treasure chest'}
 						</div>
-						<DialogTitle className="text-3xl font-black tracking-tight text-white">
+						<DialogTitle className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">
 							Chest opened
 						</DialogTitle>
-						<DialogDescription className="max-w-sm text-base leading-7 text-white/70">
+						<DialogDescription className="max-w-sm text-base leading-7 text-slate-600 dark:text-white/70">
 							A little bonus for keeping your Tagalog momentum going.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
-						<div className="rounded-[24px] border border-white/10 bg-white/4 px-4 py-5 text-center">
-							<p className="text-xs font-black uppercase tracking-[0.16em] text-white/42">
+						<div className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-5 text-center dark:border-white/10 dark:bg-white/4">
+							<p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/42">
 								{rewardPresentation?.badge}
 							</p>
-							<p className="mt-2 text-3xl font-black text-white">
+							<p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">
 								{rewardPresentation?.amountLabel}
 							</p>
 						</div>
 						<Button
 							type="button"
-							className="h-11 w-full rounded-2xl bg-white text-slate-950 hover:bg-white/90"
+							className="h-11 w-full rounded-2xl bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-white/90"
 							onClick={() => setChestReward(null)}
 						>
 							Continue
@@ -502,14 +595,14 @@ export function LearnPage() {
 
 			<div className="flex items-start justify-between gap-4 sm:gap-6">
 				<div>
-					<h1 className="text-3xl font-black tracking-tight text-white sm:text-5xl">
+					<h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl">
 						Learn
 					</h1>
-					<p className="mt-1 text-base text-white/68 sm:mt-2 sm:text-lg">
+					<p className="mt-1 text-base text-slate-600 dark:text-white/68 sm:mt-2 sm:text-lg">
 						Your path to Tagalog fluency
 					</p>
 				</div>
-				<div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/4 px-4 py-2 text-sm text-white/65 lg:flex">
+				<div className="hidden items-center gap-2 rounded-full border border-orange-200/80 bg-white/70 px-4 py-2 text-sm text-slate-600 shadow-sm dark:border-white/8 dark:bg-white/4 dark:text-white/65 lg:flex">
 					<Flame className="size-4 text-orange-300" />
 					{snapshot.profile.streak} day streak and counting
 				</div>
@@ -517,8 +610,8 @@ export function LearnPage() {
 
 			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
 				<div className="space-y-6">
-					<Card className="overflow-hidden border-white/10 bg-[#121d28] shadow-none">
-						<div className="grid divide-y divide-white/8 md:grid-cols-2 md:divide-x md:divide-y-0 lg:grid-cols-4">
+					<Card className="overflow-hidden border-slate-200/80 bg-white/88 shadow-sm dark:border-white/10 dark:bg-[#121d28] dark:shadow-none">
+						<div className="grid divide-y divide-slate-200/80 dark:divide-white/8 md:grid-cols-2 md:divide-x md:divide-y-0 lg:grid-cols-4">
 							<SummaryCell className="flex items-center gap-4 sm:gap-5">
 								<CircularGoal
 									value={goalProgress}
@@ -526,25 +619,27 @@ export function LearnPage() {
 									target={snapshot.profile.dailyGoal.xpTarget}
 								/>
 								<div>
-									<p className="text-sm font-medium text-white/56">Daily XP</p>
-									<p className="mt-2 text-xl font-black text-white sm:mt-3 sm:text-2xl">
+									<p className="text-sm font-medium text-slate-500 dark:text-white/56">
+										Daily XP
+									</p>
+									<p className="mt-2 text-xl font-black text-slate-950 dark:text-white sm:mt-3 sm:text-2xl">
 										You're on track!
 									</p>
-									<p className="mt-1 max-w-[12rem] text-sm leading-6 text-white/68 sm:text-lg sm:leading-7">
+									<p className="mt-1 max-w-[12rem] text-sm leading-6 text-slate-600 dark:text-white/68 sm:text-lg sm:leading-7">
 										Keep it up to reach your goal.
 									</p>
 								</div>
 							</SummaryCell>
 
 							<SummaryCell>
-								<div className="flex items-center gap-2 text-sm font-medium text-white/56">
+								<div className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-white/56">
 									<span>Next lesson</span>
 									<span className="size-3 rounded-full bg-lime-400" />
 								</div>
-								<p className="mt-2 text-2xl font-black tracking-tight text-white sm:mt-3 sm:text-[2rem]">
+								<p className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-[2rem]">
 									{nextLesson?.lesson.title ?? 'Keep going'}
 								</p>
-								<p className="mt-1 max-w-[18rem] text-sm leading-6 text-white/68 sm:text-lg sm:leading-7">
+								<p className="mt-1 max-w-[18rem] text-sm leading-6 text-slate-600 dark:text-white/68 sm:text-lg sm:leading-7">
 									{nextLesson?.lesson.description ??
 										'Pick up where you left off and keep progressing.'}
 								</p>
@@ -561,21 +656,23 @@ export function LearnPage() {
 							</SummaryCell>
 
 							<SummaryCell>
-								<div className="flex items-center gap-2 text-sm font-medium text-white/56">
+								<div className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-white/56">
 									<span>Review due</span>
 									<span className="size-3 rounded-full bg-amber-400" />
 								</div>
 								<div className="mt-4 flex items-center gap-4 sm:gap-5">
-									<div className="flex size-20 items-center justify-center rounded-full bg-white/6 text-center sm:size-24">
+									<div className="flex size-20 items-center justify-center rounded-full bg-slate-100 text-center dark:bg-white/6 sm:size-24">
 										<div>
-											<p className="text-2xl font-black leading-none text-white sm:text-[2rem]">
+											<p className="text-2xl font-black leading-none text-slate-950 dark:text-white sm:text-[2rem]">
 												{dueReview}
 											</p>
-											<p className="mt-1 text-sm text-white/56">cards</p>
+											<p className="mt-1 text-sm text-slate-500 dark:text-white/56">
+												cards
+											</p>
 										</div>
 									</div>
 									<div>
-										<p className="max-w-[11rem] text-sm leading-6 text-white/68 sm:text-lg sm:leading-7">
+										<p className="max-w-[11rem] text-sm leading-6 text-slate-600 dark:text-white/68 sm:text-lg sm:leading-7">
 											Review to keep your streak strong.
 										</p>
 										<Button
@@ -590,13 +687,13 @@ export function LearnPage() {
 							</SummaryCell>
 
 							<SummaryCell>
-								<p className="text-sm font-medium text-white/56">
+								<p className="text-sm font-medium text-slate-500 dark:text-white/56">
 									Current section
 								</p>
-								<p className="mt-2 text-2xl font-black tracking-tight text-white sm:mt-3 sm:text-[2rem]">
+								<p className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:mt-3 sm:text-[2rem]">
 									Section {activeUnitView?.unit.order ?? 1}
 								</p>
-								<p className="mt-1 text-xl font-medium text-white/72 sm:text-[1.7rem]">
+								<p className="mt-1 text-xl font-medium text-slate-600 dark:text-white/72 sm:text-[1.7rem]">
 									{activeUnitView?.unit.title}
 								</p>
 								<div className="mt-5 flex items-center gap-3 sm:mt-6 sm:gap-4">
@@ -607,9 +704,9 @@ export function LearnPage() {
 													100
 												: 0
 										}
-										className="h-3 bg-white/8"
+										className="h-3 bg-slate-200 dark:bg-white/8"
 									/>
-									<span className="shrink-0 text-sm text-white/58 sm:text-base">
+									<span className="shrink-0 text-sm text-slate-500 dark:text-white/58 sm:text-base">
 										{completedUnitLessons} / {activeUnitLessons.length} lessons
 									</span>
 								</div>
@@ -626,9 +723,10 @@ export function LearnPage() {
 						/>
 					</div>
 
-					<div className="-mx-3 rounded-none bg-[#091520] px-3 py-4 sm:mx-auto sm:max-w-[920px] sm:rounded-[32px] sm:px-6 sm:py-5 lg:px-8">
+					<div className="-mx-3 rounded-none px-3 py-4 sm:mx-auto sm:max-w-[920px] sm:rounded-[32px] sm:px-6 sm:py-5 lg:px-8">
 						{activeHeaderUnit ? (
 							<SectionPathHeader
+								key={activeHeaderUnit.unit.id}
 								unitView={activeHeaderUnit}
 								tone={activeHeaderTone}
 							/>

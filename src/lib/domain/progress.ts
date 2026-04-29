@@ -884,16 +884,6 @@ function createUnitItems(
 			subtitle: category.subtitle,
 		})
 
-		if (category.hasGuidebook) {
-			items.push({
-				id: `${category.id}-guidebook`,
-				unit,
-				category,
-				nodeType: 'guidebook',
-				label: 'Guidebook',
-			})
-		}
-
 		nodes
 			.filter((node) => node.category.id === category.id)
 			.forEach((node) => {
@@ -911,8 +901,8 @@ function createUnitItems(
 							: canJumpHere
 								? 'jump'
 								: node.unlocked
-								? 'available'
-								: 'locked',
+									? 'available'
+									: 'locked',
 					ctaLabel: node.completed
 						? 'Practice'
 						: node.isCurrent
@@ -1114,15 +1104,17 @@ export function applyLessonSummary(
 			100
 	)
 	const passed = score >= LESSON_PASS_SCORE
-	const earnedAttemptXp = results.reduce((sum, result) => sum + result.earnedXp, 0)
+	const earnedAttemptXp = results.reduce(
+		(sum, result) => sum + result.earnedXp,
+		0
+	)
 	const heartsLost = results.reduce(
 		(sum, result) => sum + Math.abs(Math.min(result.heartsDelta, 0)),
 		0
 	)
 	const allLessons = getFlattenedLessons().map(({ lesson }) => lesson)
 	const flattenedLessons = getFlattenedLessons()
-	const currentIndex =
-		getActiveLessonIndex(flattenedLessons, snapshot)
+	const currentIndex = getActiveLessonIndex(flattenedLessons, snapshot)
 	const attemptedIndex = allLessons.findIndex((item) => item.id === lesson.id)
 	const allowedJumpLessonIds = getAllowedJumpLessonIds(snapshot)
 	const isJumpAttempt =
@@ -1167,7 +1159,9 @@ export function applyLessonSummary(
 		completedAt: passed ? completedAt : undefined,
 	}
 	const nextLessonId =
-		passed && attemptedIndex >= 0 && (isJumpAttempt || attemptedIndex <= currentIndex)
+		passed &&
+		attemptedIndex >= 0 &&
+		(isJumpAttempt || attemptedIndex <= currentIndex)
 			? allLessons[attemptedIndex + 1]?.id
 			: attemptedIndex > currentIndex
 				? snapshot.currentLessonId

@@ -259,8 +259,8 @@ function StreakStatusItem({
 			<button
 				type="button"
 				className={cn(
-					'flex h-11 min-w-[4.3rem] items-center justify-center gap-2 rounded-2xl px-2.5 text-white transition hover:bg-white/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:h-12 sm:min-w-[5rem] sm:px-3',
-					open && 'bg-white/8'
+					'flex h-11 min-w-[4.3rem] items-center justify-center gap-2 rounded-2xl px-2.5 text-slate-800 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:h-12 sm:min-w-[5rem] sm:px-3 dark:text-white dark:hover:bg-white/8',
+					open && 'bg-slate-100 dark:bg-white/8'
 				)}
 				aria-expanded={open}
 				aria-haspopup="dialog"
@@ -413,8 +413,8 @@ function GemsStatusItem({
 			<button
 				type="button"
 				className={cn(
-					'flex h-11 min-w-[4.3rem] items-center justify-center gap-2 rounded-2xl px-2.5 text-white transition hover:bg-white/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:h-12 sm:min-w-[5rem] sm:px-3',
-					open && 'bg-white/8'
+					'flex h-11 min-w-[4.3rem] items-center justify-center gap-2 rounded-2xl px-2.5 text-slate-800 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:h-12 sm:min-w-[5rem] sm:px-3 dark:text-white dark:hover:bg-white/8',
+					open && 'bg-slate-100 dark:bg-white/8'
 				)}
 				aria-expanded={open}
 				aria-haspopup="dialog"
@@ -727,8 +727,8 @@ function HeartStatusItem({
 			<button
 				type="button"
 				className={cn(
-					'flex h-11 min-w-[4.3rem] items-center justify-center gap-2 rounded-2xl px-2.5 text-white transition hover:bg-white/8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:h-12 sm:min-w-[5rem] sm:px-3',
-					open && 'bg-white/8'
+					'flex h-11 min-w-[4.3rem] items-center justify-center gap-2 rounded-2xl px-2.5 text-slate-800 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:h-12 sm:min-w-[5rem] sm:px-3 dark:text-white dark:hover:bg-white/8',
+					open && 'bg-slate-100 dark:bg-white/8'
 				)}
 				aria-expanded={open}
 				aria-haspopup="dialog"
@@ -736,7 +736,7 @@ function HeartStatusItem({
 				onClick={() => onOpenChange(!open)}
 			>
 				<Heart className="size-7 fill-rose-500 text-rose-500 stroke-none sm:size-8" />
-				<span className="text-base font-black text-rose-300 sm:text-lg">
+				<span className="text-base font-black text-rose-500 dark:text-rose-300 sm:text-lg">
 					{hearts.toLocaleString()}
 				</span>
 			</button>
@@ -778,12 +778,12 @@ export function TopStatusBar({
 	}
 
 	return (
-		<div className="sticky top-0 z-40 border-b border-white/8 bg-[#09131d]/90 backdrop-blur-xl">
+		<div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/82 backdrop-blur-xl dark:border-white/8 dark:bg-[#09131d]/90">
 			<div className="mx-auto flex max-w-[1440px] items-center justify-between gap-2 px-3 py-2 sm:px-4 lg:px-8">
 				<div aria-hidden="true" />
 				<div className="flex min-w-0 items-center gap-1 sm:gap-2">
 					{loading ? (
-						<div className="hidden rounded-full border border-sky-400/25 bg-sky-400/10 px-3 py-2 text-xs font-black uppercase text-sky-100 sm:block">
+						<div className="hidden rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-black uppercase text-sky-700 dark:border-sky-400/25 dark:bg-sky-400/10 dark:text-sky-100 sm:block">
 							Syncing
 						</div>
 					) : null}
