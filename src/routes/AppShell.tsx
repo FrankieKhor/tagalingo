@@ -18,12 +18,14 @@ export function AppShell() {
 
 	if (authLoading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_26%),linear-gradient(180deg,#08121b_0%,#091722_50%,#08111a_100%)] px-4 text-white">
+			<div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.3),_transparent_32%),linear-gradient(180deg,#fff7ed_0%,#f8fafc_48%,#ecfeff_100%)] px-4 text-slate-950 dark:bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_26%),linear-gradient(180deg,#08121b_0%,#091722_50%,#08111a_100%)] dark:text-white">
 				<div className="text-center">
 					<p className="text-sm font-black uppercase tracking-[0.22em] text-lime-400">
 						Tagalingo
 					</p>
-					<p className="mt-3 text-lg text-white/70">Checking your account...</p>
+					<p className="mt-3 text-lg text-slate-600 dark:text-white/70">
+						Checking your account...
+					</p>
 				</div>
 			</div>
 		)
@@ -31,7 +33,7 @@ export function AppShell() {
 
 	if (!user) {
 		return (
-			<div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_26%),linear-gradient(180deg,#08121b_0%,#091722_50%,#08111a_100%)] px-4 py-8 text-white">
+			<div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.3),_transparent_32%),linear-gradient(180deg,#fff7ed_0%,#f8fafc_48%,#ecfeff_100%)] px-4 py-8 text-slate-950 dark:bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_26%),linear-gradient(180deg,#08121b_0%,#091722_50%,#08111a_100%)] dark:text-white">
 				<div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-xl flex-col justify-center">
 					<div className="mb-6">
 						<p className="text-sm font-black uppercase tracking-[0.22em] text-lime-400">
@@ -40,7 +42,7 @@ export function AppShell() {
 						<h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
 							Create your learning account
 						</h1>
-						<p className="mt-3 text-lg leading-8 text-white/68">
+						<p className="mt-3 text-lg leading-8 text-slate-600 dark:text-white/68">
 							Sign up or sign in to save hearts, XP, streaks, lesson progress,
 							quests, and review history.
 						</p>
@@ -52,7 +54,7 @@ export function AppShell() {
 	}
 
 	return (
-		<div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_26%),linear-gradient(180deg,#08121b_0%,#091722_50%,#08111a_100%)] text-white transition-colors">
+		<div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.3),_transparent_32%),linear-gradient(180deg,#fff7ed_0%,#f8fafc_48%,#ecfeff_100%)] text-slate-950 transition-colors dark:bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_26%),linear-gradient(180deg,#08121b_0%,#091722_50%,#08111a_100%)] dark:text-white">
 			<div className="flex min-h-screen w-full">
 				<DesktopSidebar />
 				<div className="min-h-screen min-w-0 flex-1 pb-24 lg:pb-0">
