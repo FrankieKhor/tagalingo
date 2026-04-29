@@ -1,15 +1,6 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import {
-	CheckCircle2,
-	Flame,
-	Info,
-	Sparkles,
-	Star,
-	X,
-	XCircle,
-} from 'lucide-react'
+import { CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { ExerciseRenderer } from '@/components/exercise/exercise-renderer'
@@ -29,9 +20,18 @@ import {
 	createSkippedSpeakingResult,
 	isSpeakingExercise,
 } from '@/lib/domain/lesson-engine'
-import { isSpeakingSkipActive } from '@/lib/domain/progress'
+import { isSpeakingSkipActive, LESSON_PASS_SCORE } from '@/lib/domain/progress'
 import type { ProgressSnapshot } from '@/lib/domain/models'
 import { Progress } from '@/components/ui/progress'
+import {
+	LessonCompletionScreen,
+	type LessonCompletionBonus,
+	type LessonCompletionSummary,
+} from '@/features/lessons/components/lesson-completion-screen'
+import {
+	LessonAchievementsScreen,
+	LessonStreakScreen,
+} from '@/features/lessons/components/lesson-post-result-screens'
 import {
 	Sheet,
 	SheetContent,
@@ -41,10 +41,13 @@ import {
 	SheetTrigger,
 } from '@/components/ui/sheet'
 import { appServices } from '@/lib/services/app-services'
+import { achievementCatalog } from '@/content'
 import type {
+	Achievement,
 	Exercise,
 	ExerciseAnswer,
 	ExerciseResult,
+	Lesson,
 } from '@/lib/domain/models'
 import { useAppStore } from '@/store/use-app-store'
 import { toISODate } from '@/lib/utils/dates'
@@ -206,42 +209,61 @@ function chooseRetryInsertIndex(queueLength: number, currentIndex: number) {
 	return earliestLaterIndex + Math.floor(Math.random() * availableSlots)
 }
 
-type LessonPhase = 'intro' | 'exercise'
-type LessonCelebration =
-	| {
-			kind: 'streak'
-			title: string
-			body: string
-			value: string
-	  }
-	| {
-			kind: 'daily-goal'
-			title: string
-			body: string
-			value: string
-			completed: boolean
-	  }
+type LessonPhase =
+	| 'intro'
+	| 'exercise'
+	| 'completion'
+	| 'streak'
+	| 'achievements'
+type LessonCelebration = LessonCompletionBonus
 
-function buildLessonCelebrations(
+type PostLessonResult = {
+	streak?: {
+		streak: number
+		lastActiveOn?: string
+	}
+	achievements: Achievement[]
+}
+
+function getLatestExerciseResults(results: ExerciseResult[]) {
+	const latestResults = new Map<string, ExerciseResult>()
+
+	results.forEach((result) => {
+		latestResults.set(result.exerciseId, result)
+	})
+
+	return Array.from(latestResults.values())
+}
+
+function buildLessonCompletionSummary(
+	lesson: Lesson,
+	results: ExerciseResult[],
+	bonuses: LessonCelebration[]
+): LessonCompletionSummary {
+	const latestResults = getLatestExerciseResults(results)
+	const accuracy = Math.round(
+		(latestResults.filter((result) => result.correct).length /
+			lesson.exercises.length) *
+			100
+	)
+
+	return {
+		title: lesson.title,
+		totalXp: results.reduce((sum, result) => sum + result.earnedXp, 0),
+		accuracy,
+		passed: accuracy >= LESSON_PASS_SCORE,
+		bonuses,
+	}
+}
+
+function buildDailyGoalCelebrations(
 	beforeSnapshot: ProgressSnapshot,
 	afterSnapshot: ProgressSnapshot
 ): LessonCelebration[] {
 	const celebrations: LessonCelebration[] = []
-	const today = toISODate()
-	const beforeLastActive = beforeSnapshot.profile.lastActiveOn
-	const afterLastActive = afterSnapshot.profile.lastActiveOn
 	const beforeDailyXp = beforeSnapshot.profile.dailyGoal.currentXp
 	const afterDailyXp = afterSnapshot.profile.dailyGoal.currentXp
 	const dailyXpTarget = afterSnapshot.profile.dailyGoal.xpTarget
-
-	if (beforeLastActive !== today && afterLastActive === today) {
-		celebrations.push({
-			kind: 'streak',
-			title: 'Streak locked in',
-			body: "Today's lesson kept your momentum going.",
-			value: `${afterSnapshot.profile.streak}-day streak`,
-		})
-	}
 
 	if (beforeDailyXp < dailyXpTarget && afterDailyXp > beforeDailyXp) {
 		const cappedBefore = Math.min(beforeDailyXp, dailyXpTarget)
@@ -260,6 +282,37 @@ function buildLessonCelebrations(
 	}
 
 	return celebrations
+}
+
+function buildPostLessonResult(
+	beforeSnapshot: ProgressSnapshot,
+	afterSnapshot: ProgressSnapshot,
+	passed: boolean
+): PostLessonResult {
+	if (!passed) {
+		return { achievements: [] }
+	}
+
+	const today = toISODate()
+	const shouldShowStreak =
+		beforeSnapshot.profile.lastActiveOn !== today &&
+		afterSnapshot.profile.lastActiveOn === today
+	const beforeAchievements = new Set(beforeSnapshot.profile.achievements)
+	const newAchievementIds = afterSnapshot.profile.achievements.filter(
+		(id) => !beforeAchievements.has(id)
+	)
+
+	return {
+		streak: shouldShowStreak
+			? {
+					streak: afterSnapshot.profile.streak,
+					lastActiveOn: afterSnapshot.profile.lastActiveOn,
+				}
+			: undefined,
+		achievements: achievementCatalog.filter((achievement) =>
+			newAchievementIds.includes(achievement.id)
+		),
+	}
 }
 
 export function LessonPlayerPage() {
@@ -285,8 +338,10 @@ export function LessonPlayerPage() {
 	const [phase, setPhase] = useState<LessonPhase>('intro')
 	const [skipNotice, setSkipNotice] = useState<string | null>(null)
 	const [queueIndex, setQueueIndex] = useState(0)
-	const [celebrations, setCelebrations] = useState<LessonCelebration[]>([])
-	const [activeCelebrationIndex, setActiveCelebrationIndex] = useState(0)
+	const [completionSummary, setCompletionSummary] =
+		useState<LessonCompletionSummary | null>(null)
+	const [postLessonResult, setPostLessonResult] =
+		useState<PostLessonResult | null>(null)
 	const [quitDialogOpen, setQuitDialogOpen] = useState(false)
 	const [exerciseQueue, setExerciseQueue] = useState<string[]>(() =>
 		shuffleExerciseIds(lesson?.exercises.map((exercise) => exercise.id) ?? [])
@@ -301,12 +356,12 @@ export function LessonPlayerPage() {
 		setPhase('intro')
 		setSkipNotice(null)
 		setQueueIndex(0)
-		setCelebrations([])
-		setActiveCelebrationIndex(0)
+		setCompletionSummary(null)
+		setPostLessonResult(null)
 		setExerciseQueue(
 			shuffleExerciseIds(lesson?.exercises.map((exercise) => exercise.id) ?? [])
 		)
-	}, [lesson?.id])
+	}, [lesson?.exercises, lesson?.id])
 
 	const exercise = lesson?.exercises.find(
 		(candidate) => candidate.id === exerciseQueue[queueIndex]
@@ -319,9 +374,11 @@ export function LessonPlayerPage() {
 
 		const totalScreens = lesson.introCards.length + exerciseQueue.length
 		const completedScreens =
-			phase === 'intro'
-				? introIndex + 1
-				: lesson.introCards.length + queueIndex + 1
+			phase === 'completion' || phase === 'streak' || phase === 'achievements'
+				? totalScreens
+				: phase === 'intro'
+					? introIndex + 1
+					: lesson.introCards.length + queueIndex + 1
 
 		return (completedScreens / totalScreens) * 100
 	}, [exerciseQueue.length, introIndex, lesson, phase, queueIndex])
@@ -329,7 +386,6 @@ export function LessonPlayerPage() {
 	const activeLesson = lesson
 	const activeExercise = phase === 'exercise' ? exercise : undefined
 	const activeIntroCard = phase === 'intro' ? introCard : undefined
-	const activeCelebration = celebrations[activeCelebrationIndex]
 	const speakingSkipActive = isSpeakingSkipActive(snapshot)
 	const speakingSkipUntilLabel = formatSkipUntil(snapshot.speakingSkipUntil)
 	const audioMeaningLookup = useMemo(
@@ -353,32 +409,67 @@ export function LessonPlayerPage() {
 			: undefined
 	}, [activeExercise, audioMeaningLookup])
 
-	async function finishLesson(nextResults: ExerciseResult[]) {
-		if (!activeLesson) {
+	const finishLesson = useCallback(
+		async (nextResults: ExerciseResult[]) => {
+			if (!activeLesson) {
+				return
+			}
+
+			const updatedSnapshot = await completeLesson(activeLesson, nextResults)
+			const nextCelebrations = buildDailyGoalCelebrations(
+				snapshot,
+				updatedSnapshot
+			)
+			const nextCompletionSummary = buildLessonCompletionSummary(
+				activeLesson,
+				nextResults,
+				nextCelebrations
+			)
+
+			setCompletionSummary(nextCompletionSummary)
+			setPostLessonResult(
+				buildPostLessonResult(
+					snapshot,
+					updatedSnapshot,
+					nextCompletionSummary.passed
+				)
+			)
+			setPhase('completion')
+		},
+		[activeLesson, completeLesson, snapshot]
+	)
+
+	function continuePostLessonFlow() {
+		if (phase === 'completion' && postLessonResult?.streak) {
+			setPhase('streak')
 			return
 		}
 
-		const updatedSnapshot = await completeLesson(activeLesson, nextResults)
-		const nextCelebrations = buildLessonCelebrations(snapshot, updatedSnapshot)
-
-		if (nextCelebrations.length > 0) {
-			setCelebrations(nextCelebrations)
-			setActiveCelebrationIndex(0)
+		if (
+			(phase === 'completion' || phase === 'streak') &&
+			postLessonResult?.achievements.length
+		) {
+			setPhase('achievements')
 			return
 		}
 
 		navigate('/')
 	}
 
-	function advanceCelebration() {
-		if (activeCelebrationIndex < celebrations.length - 1) {
-			setActiveCelebrationIndex((current) => current + 1)
-			return
-		}
-
-		setCelebrations([])
-		setActiveCelebrationIndex(0)
-		navigate('/')
+	function resetLessonRun() {
+		setIntroIndex(0)
+		setAnswer(defaultAnswer())
+		setResults([])
+		setCheckedResult(null)
+		setListening(false)
+		setPhase('intro')
+		setSkipNotice(null)
+		setQueueIndex(0)
+		setCompletionSummary(null)
+		setPostLessonResult(null)
+		setExerciseQueue(
+			shuffleExerciseIds(activeLesson?.exercises.map((item) => item.id) ?? [])
+		)
 	}
 
 	useEffect(() => {
@@ -416,34 +507,22 @@ export function LessonPlayerPage() {
 		setQueueIndex(queueIndex + 1)
 	}, [
 		activeExercise,
-		activeLesson,
 		checkedResult,
-		completeLesson,
 		exerciseQueue.length,
-		navigate,
+		finishLesson,
 		phase,
 		queueIndex,
 		results,
 		speakingSkipActive,
 	])
 
-	useEffect(() => {
-		if (!activeCelebration) {
-			return
-		}
-
-		const timeout = window.setTimeout(
-			advanceCelebration,
-			snapshot.settings.reducedMotion ? 1000 : 1800
-		)
-
-		return () => window.clearTimeout(timeout)
-	}, [activeCelebration, snapshot.settings.reducedMotion])
-
 	if (
 		!activeLesson ||
 		(phase === 'exercise' && !activeExercise) ||
-		(phase === 'intro' && !activeIntroCard)
+		(phase === 'intro' && !activeIntroCard) ||
+		(phase === 'completion' && !completionSummary) ||
+		(phase === 'streak' && !postLessonResult?.streak) ||
+		(phase === 'achievements' && !postLessonResult?.achievements.length)
 	) {
 		return (
 			<Card>
@@ -451,6 +530,38 @@ export function LessonPlayerPage() {
 					Lesson not found. Head back to the path and pick another one.
 				</CardContent>
 			</Card>
+		)
+	}
+
+	if (phase === 'completion' && completionSummary) {
+		return (
+			<LessonCompletionScreen
+				summary={completionSummary}
+				reducedMotion={snapshot.settings.reducedMotion}
+				onPracticeAgain={resetLessonRun}
+				onContinue={continuePostLessonFlow}
+			/>
+		)
+	}
+
+	if (phase === 'streak' && postLessonResult?.streak) {
+		return (
+			<LessonStreakScreen
+				streak={postLessonResult.streak.streak}
+				lastActiveOn={postLessonResult.streak.lastActiveOn}
+				reducedMotion={snapshot.settings.reducedMotion}
+				onContinue={continuePostLessonFlow}
+			/>
+		)
+	}
+
+	if (phase === 'achievements' && postLessonResult?.achievements.length) {
+		return (
+			<LessonAchievementsScreen
+				achievements={postLessonResult.achievements}
+				reducedMotion={snapshot.settings.reducedMotion}
+				onContinue={continuePostLessonFlow}
+			/>
 		)
 	}
 
@@ -657,67 +768,6 @@ export function LessonPlayerPage() {
 					</Sheet>
 				</div>
 			</div>
-
-			<AnimatePresence>
-				{activeCelebration ? (
-					<motion.div
-						key={`${activeCelebration.kind}-${activeCelebrationIndex}`}
-						initial={{
-							opacity: 0,
-							scale: snapshot.settings.reducedMotion ? 1 : 0.92,
-						}}
-						animate={{ opacity: 1, scale: 1 }}
-						exit={{
-							opacity: 0,
-							scale: snapshot.settings.reducedMotion ? 1 : 1.04,
-						}}
-						transition={{
-							duration: snapshot.settings.reducedMotion ? 0.15 : 0.3,
-						}}
-						className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm"
-					>
-						<motion.div
-							initial={{ y: snapshot.settings.reducedMotion ? 0 : 18 }}
-							animate={{ y: 0 }}
-							transition={{
-								duration: snapshot.settings.reducedMotion ? 0.15 : 0.35,
-							}}
-							className="w-full max-w-md rounded-[32px] border border-white/15 bg-white p-6 text-center shadow-2xl dark:bg-[#13212a]"
-						>
-							<div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-orange-400 text-slate-950">
-								{activeCelebration.kind === 'streak' ? (
-									<Flame className="size-8" />
-								) : activeCelebration.completed ? (
-									<Sparkles className="size-8" />
-								) : (
-									<Star className="size-8" />
-								)}
-							</div>
-							<p className="mt-5 text-xs font-black uppercase tracking-[0.22em] text-sky-600 dark:text-sky-300">
-								{activeCelebration.kind === 'streak'
-									? 'Streak update'
-									: 'Daily goal'}
-							</p>
-							<h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-								{activeCelebration.title}
-							</h2>
-							<p className="mt-3 text-lg font-bold text-slate-800 dark:text-white/90">
-								{activeCelebration.value}
-							</p>
-							<p className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/70">
-								{activeCelebration.body}
-							</p>
-							<Button
-								type="button"
-								className="mt-6 h-11 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90"
-								onClick={advanceCelebration}
-							>
-								Continue
-							</Button>
-						</motion.div>
-					</motion.div>
-				) : null}
-			</AnimatePresence>
 
 			{skipNotice ? (
 				<Card className="border-sky-200 bg-sky-50 dark:border-sky-500/30 dark:bg-sky-500/10">
