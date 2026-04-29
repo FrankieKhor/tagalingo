@@ -1,8 +1,8 @@
 import {
+	Bird,
 	BookOpen,
 	Check,
 	FastForward,
-	Gift,
 	Lock,
 	Play,
 	Star,
@@ -10,6 +10,11 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import {
+	ChestIcon,
+	InactiveChestIcon,
+	OpenChestIcon,
+} from '@/components/rewards/chest-icon'
 import type {
 	LearnPathMarkerViewModel,
 	LearnPathNodeViewModel,
@@ -25,6 +30,10 @@ type RewardItem = LearnPathMarkerViewModel & {
 }
 type MarkerItem = GuidebookItem | RewardItem
 type DisplayItem = LessonItem | MarkerItem
+type LessonNodeIcon = 'check' | 'book' | 'chicken'
+type PathNodeIconMeta = {
+	lessonIcon?: LessonNodeIcon
+}
 export type LearnPathTone = {
 	availableNode: string
 	completedNode: string
@@ -138,6 +147,85 @@ function getNodePalette(item: DisplayItem, tone: LearnPathTone) {
 	return 'border-white/10 bg-[#2a3542] text-white/60'
 }
 
+function getRewardIconTone(item: RewardItem) {
+	if (item.chestState === 'opened') {
+		return 'text-lime-400'
+	}
+
+	if (item.chestState === 'ready') {
+		return 'text-amber-300'
+	}
+
+	return 'text-white/45'
+}
+
+function getLessonNodeSurface(item: LessonItem) {
+	if (item.state === 'locked') {
+		return [
+			'border-white/10 bg-[linear-gradient(180deg,#334453_0%,#24313d_58%,#1b2630_100%)] text-white/48',
+			'shadow-[inset_0_4px_0_rgba(255,255,255,0.08),inset_0_-7px_0_rgba(8,19,28,0.28),0_12px_0_rgba(8,19,28,0.2),0_18px_24px_rgba(8,19,28,0.22)]',
+		]
+	}
+
+	if (item.state === 'jump') {
+		return [
+			'border-sky-200/35 bg-[linear-gradient(180deg,#5bd8ff_0%,#1facf0_48%,#0b82c8_100%)] text-white',
+			'shadow-[inset_0_5px_0_rgba(255,255,255,0.28),inset_0_-8px_0_rgba(3,105,161,0.42),0_10px_0_rgba(3,105,161,0.85),0_18px_28px_rgba(8,19,28,0.28)]',
+		]
+	}
+
+	if (item.state === 'current') {
+		return [
+			'border-sky-100/70 bg-[linear-gradient(180deg,#67e8f9_0%,#22c7f7_45%,#0ea5e9_100%)] text-white',
+			'shadow-[inset_0_5px_0_rgba(255,255,255,0.38),inset_0_-8px_0_rgba(2,132,199,0.48),0_10px_0_rgba(3,105,161,0.95),0_20px_32px_rgba(8,19,28,0.34)]',
+		]
+	}
+
+	if (item.state === 'completed') {
+		return [
+			'border-sky-100/70 bg-[linear-gradient(180deg,#55d7ff_0%,#18b9f2_46%,#0284c7_100%)] text-white',
+			'shadow-[inset_0_5px_0_rgba(255,255,255,0.36),inset_0_-8px_0_rgba(2,132,199,0.5),0_10px_0_rgba(3,105,161,0.95),0_18px_28px_rgba(8,19,28,0.3)]',
+		]
+	}
+
+	return [
+		'border-sky-100/50 bg-[linear-gradient(180deg,#7dd3fc_0%,#38bdf8_48%,#0ea5e9_100%)] text-white',
+		'shadow-[inset_0_5px_0_rgba(255,255,255,0.32),inset_0_-8px_0_rgba(2,132,199,0.42),0_10px_0_rgba(3,105,161,0.82),0_18px_28px_rgba(8,19,28,0.28)]',
+	]
+}
+
+function getGuidebookNodeSurface() {
+	return [
+		'border-sky-100/55 bg-[linear-gradient(180deg,#5bd8ff_0%,#1fbaf2_48%,#0b88cf_100%)] text-white',
+		'shadow-[inset_0_5px_0_rgba(255,255,255,0.3),inset_0_-8px_0_rgba(2,132,199,0.44),0_10px_0_rgba(3,105,161,0.82),0_18px_28px_rgba(8,19,28,0.28)]',
+	]
+}
+
+function getPathNodeIconMeta(items: DisplayItem[]) {
+	const meta = new Map<string, PathNodeIconMeta>()
+	const lessonItems = items.filter((item): item is LessonItem =>
+		isLessonItem(item)
+	)
+
+	lessonItems.forEach((item) => {
+		const lastSectionLesson =
+			item.category.lessons[item.category.lessons.length - 1]
+		const lessonIndex = item.category.lessons.findIndex(
+			(lesson) => lesson.id === item.lesson.id
+		)
+
+		meta.set(item.id, {
+			lessonIcon: item.state === 'completed' && item.lesson.id === lastSectionLesson?.id
+				? 'chicken'
+				: lessonIndex % 2 === 0
+					? 'check'
+					: 'book',
+		})
+	})
+
+	return meta
+}
+
 function getStatusLabel(item: DisplayItem) {
 	if (isGuidebookItem(item)) {
 		return 'Preview'
@@ -210,32 +298,88 @@ function getDescription(item: DisplayItem) {
 	return item.lesson.description
 }
 
-function PathNodeIcon({ item }: { item: DisplayItem }) {
+function PathNodeIcon({
+	item,
+	iconMeta,
+}: {
+	item: DisplayItem
+	iconMeta?: PathNodeIconMeta
+}) {
 	if (isGuidebookItem(item)) {
-		return <BookOpen className="size-8" />
+		return <BookOpen className="size-9 drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
 	}
 
 	if (isRewardItem(item)) {
-		return <Gift className="size-8" />
+		if (item.chestState === 'opened') {
+			return (
+				<OpenChestIcon className="size-16 drop-shadow-[0_12px_18px_rgba(8,19,28,0.34)] md:size-20" />
+			)
+		}
+
+		if (item.chestState === 'locked') {
+			return (
+				<InactiveChestIcon
+					className="size-16 opacity-62 drop-shadow-[0_10px_16px_rgba(8,19,28,0.22)] md:size-20"
+				/>
+			)
+		}
+
+		return (
+			<ChestIcon className="size-16 drop-shadow-[0_12px_18px_rgba(8,19,28,0.34)] md:size-20" />
+		)
 	}
 
 	if (item.state === 'completed') {
-		return <Check className="size-9" />
+		if (iconMeta?.lessonIcon === 'chicken') {
+			return (
+				<Bird className="size-10 fill-white/20 drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
+			)
+		}
+
+		if (iconMeta?.lessonIcon === 'book') {
+			return (
+				<BookOpen className="size-10 drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
+			)
+		}
+
+		return (
+			<Check className="size-11 stroke-[4] drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
+		)
+	}
+
+	if (item.state === 'locked') {
+		if (iconMeta?.lessonIcon === 'chicken') {
+			return (
+				<Bird className="size-9 fill-white/10 drop-shadow-[0_3px_0_rgba(8,19,28,0.14)]" />
+			)
+		}
+
+		if (iconMeta?.lessonIcon === 'book') {
+			return <BookOpen className="size-9 drop-shadow-[0_3px_0_rgba(8,19,28,0.14)]" />
+		}
+
+		return <Check className="size-10 stroke-[4] drop-shadow-[0_3px_0_rgba(8,19,28,0.14)]" />
 	}
 
 	if (item.state === 'current') {
-		return <Star className="size-9 fill-current" />
+		return (
+			<Star className="size-11 fill-current drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
+		)
 	}
 
 	if (item.state === 'available') {
-		return <Play className="ml-1 size-8 fill-current" />
+		return (
+			<Play className="ml-1 size-10 fill-current drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
+		)
 	}
 
 	if (item.state === 'jump') {
-		return <FastForward className="ml-1 size-8 fill-current" />
+		return (
+			<FastForward className="ml-1 size-10 fill-current drop-shadow-[0_3px_0_rgba(8,19,28,0.18)]" />
+		)
 	}
 
-	return <Lock className="size-8" />
+	return <Lock className="size-9 drop-shadow-[0_3px_0_rgba(8,19,28,0.14)]" />
 }
 
 function getCalloutLabel(item: DisplayItem) {
@@ -302,23 +446,33 @@ function PathNode({
 	onOpenPathChest,
 	onOpenLessonActions,
 	tone,
+	iconMeta,
 }: {
 	item: DisplayItem
 	className?: string
 	onOpenPathChest?: (chestId: string) => void
 	onOpenLessonActions?: (lessonId: string) => void
 	tone: LearnPathTone
+	iconMeta?: PathNodeIconMeta
 }) {
 	const palette = getNodePalette(item, tone)
 	const isPlayableLesson = isLessonItem(item) && item.state !== 'locked'
 	const isReadyChest = isRewardItem(item) && item.chestState === 'ready'
 	const baseClasses = cn(
-		'group flex size-24 items-center justify-center rounded-full border-[5px] transition duration-200',
+		'group relative flex size-24 items-center justify-center transition duration-200',
+		!isRewardItem(item) &&
+			'rounded-full border-[5px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-200/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#102129]',
 		isPlayableLesson &&
-			'hover:-translate-y-1 hover:scale-[1.07] hover:brightness-110 hover:shadow-[0_16px_28px_rgba(8,19,28,0.34)]',
+			'hover:-translate-y-1 hover:scale-[1.07] hover:brightness-110 active:translate-y-1 active:scale-[1.03]',
 		isReadyChest &&
-			'hover:-translate-y-1 hover:scale-[1.07] hover:brightness-110 hover:shadow-[0_16px_28px_rgba(8,19,28,0.34)]',
-		palette,
+			'hover:-translate-y-1 hover:scale-[1.08] hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#102129]',
+		isRewardItem(item)
+			? getRewardIconTone(item)
+			: isLessonItem(item)
+				? getLessonNodeSurface(item)
+				: isGuidebookItem(item)
+					? getGuidebookNodeSurface()
+					: palette,
 		className
 	)
 
@@ -330,14 +484,20 @@ function PathNode({
 					baseClasses,
 					item.chestState !== 'ready' && 'cursor-default'
 				)}
-				aria-label="Open reward chest"
+				aria-label={
+					item.chestState === 'opened'
+						? 'Reward chest opened'
+						: item.chestState === 'ready'
+							? 'Open reward chest'
+							: 'Reward chest locked'
+				}
 				onClick={() => {
 					if (item.chestState === 'ready') {
 						onOpenPathChest?.(item.id)
 					}
 				}}
 			>
-				<PathNodeIcon item={item} />
+				<PathNodeIcon item={item} iconMeta={iconMeta} />
 			</button>
 		)
 	}
@@ -345,7 +505,7 @@ function PathNode({
 	if (isGuidebookItem(item)) {
 		return (
 			<div className={baseClasses} aria-hidden="true">
-				<PathNodeIcon item={item} />
+				<PathNodeIcon item={item} iconMeta={iconMeta} />
 			</div>
 		)
 	}
@@ -353,7 +513,7 @@ function PathNode({
 	if (item.state === 'locked') {
 		return (
 			<div className={baseClasses} aria-hidden="true">
-				<PathNodeIcon item={item} />
+				<PathNodeIcon item={item} iconMeta={iconMeta} />
 			</div>
 		)
 	}
@@ -365,7 +525,7 @@ function PathNode({
 			aria-label={`Open ${item.ctaLabel.toLowerCase()} options for ${item.lesson.title}`}
 			onClick={() => onOpenLessonActions?.(item.lesson.id)}
 		>
-			<PathNodeIcon item={item} />
+			<PathNodeIcon item={item} iconMeta={iconMeta} />
 		</button>
 	)
 }
@@ -502,6 +662,7 @@ export function LearnPathCanvas({
 	reducedMotion?: boolean
 }) {
 	const items = getDisplayItems(unitView, activeLessonId)
+	const iconMetaByItemId = getPathNodeIconMeta(items)
 	const [activeActionLessonId, setActiveActionLessonId] = useState<
 		string | null
 	>(null)
@@ -577,6 +738,7 @@ export function LearnPathCanvas({
 									<PathNode
 										item={item}
 										className="size-[4.5rem]"
+										iconMeta={iconMetaByItemId.get(item.id)}
 										onOpenPathChest={onOpenPathChest}
 										onOpenLessonActions={(lessonId) =>
 											setActiveActionLessonId((current) =>
@@ -664,6 +826,7 @@ export function LearnPathCanvas({
 								) : null}
 								<PathNode
 									item={item}
+									iconMeta={iconMetaByItemId.get(item.id)}
 									onOpenPathChest={onOpenPathChest}
 									onOpenLessonActions={(lessonId) =>
 										setActiveActionLessonId((current) =>
