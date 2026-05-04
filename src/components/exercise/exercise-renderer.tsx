@@ -173,11 +173,6 @@ function AudioTranscriptHint({
 					<p className={transcriptClassName}>{transcript}</p>
 				)}
 			</div>
-			<p className="mt-2 text-xs leading-5 text-slate-500 dark:text-white/55">
-				{showMeaningHint
-					? 'Hover over the Tagalog text to see the English meaning.'
-					: 'Written out in case audio is unavailable.'}
-			</p>
 		</div>
 	)
 }
