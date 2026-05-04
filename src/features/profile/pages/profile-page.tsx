@@ -5,6 +5,8 @@ import { AuthPanel } from '@/components/auth/auth-panel'
 import { PageHeader } from '@/components/common/page-header'
 import { SettingsSheet } from '@/components/common/settings-sheet'
 import { AchievementCard } from '@/components/profile/achievement-card'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -13,8 +15,8 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { achievementCatalog } from '@/content'
+import { getRemainingAchievementCount } from '@/lib/domain/achievements'
 import { useAppStore } from '@/store/use-app-store'
 
 export function ProfilePage() {
@@ -24,6 +26,7 @@ export function ProfilePage() {
 	const [open, setOpen] = useState(false)
 
 	const achievementView = snapshot.profile.achievements
+	const remainingAchievements = getRemainingAchievementCount(snapshot.profile)
 
 	return (
 		<div className="space-y-6">
@@ -82,43 +85,21 @@ export function ProfilePage() {
 			</div>
 
 			<section className="space-y-4">
-				<div className="flex items-center justify-between">
+				<div className="flex items-center justify-between gap-4">
 					<div className="flex items-center gap-2">
 						<Trophy className="size-5 text-amber-500" />
 						<h2 className="text-lg font-bold text-slate-900 dark:text-white">
 							Achievements
 						</h2>
 					</div>
-					<p className="text-sm text-slate-500 dark:text-white/55">
+					<p className="text-right text-sm text-slate-500 dark:text-white/55">
 						{achievementView.length} unlocked
+						{remainingAchievements > 0
+							? `, ${remainingAchievements} to go`
+							: ', all complete'}
 					</p>
 				</div>
-				{[
-					{
-						id: 'first-steps',
-						title: 'First Steps',
-						description: 'Complete your first lesson.',
-						icon: '🌱',
-					},
-					{
-						id: 'hello-tagalog',
-						title: 'Hello, Tagalog',
-						description: 'Reach 60 XP.',
-						icon: '👋',
-					},
-					{
-						id: 'streak-starter',
-						title: 'Streak Starter',
-						description: 'Keep a 3-day streak.',
-						icon: '🔥',
-					},
-					{
-						id: 'review-ranger',
-						title: 'Review Ranger',
-						description: 'Finish 5 review cards.',
-						icon: '🧠',
-					},
-				].map((achievement) => (
+				{achievementCatalog.map((achievement) => (
 					<AchievementCard
 						key={achievement.id}
 						{...achievement}

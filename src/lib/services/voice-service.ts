@@ -6,9 +6,7 @@ import { playAudioSource, stopSpeechPlayback } from "@/lib/utils/audio"
 const TAGALOG_LANGUAGE_CODES = ["fil-PH", "fil", "tl-PH", "tl"]
 const PHILIPPINE_ENGLISH_CODES = ["en-PH"]
 const TAGALOG_KEYWORDS = ["tagalog", "filipino", "filipina", "pilipino", "philippines"]
-const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
-const DEFAULT_ELEVENLABS_MODEL_ID = "eleven_multilingual_v2"
-const DEFAULT_ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+const SPEECH_ENDPOINT_PATH = "/speech"
 
 function normalizeVoiceLabel(value: string) {
   return value.trim().toLowerCase()
@@ -50,47 +48,37 @@ function selectBestVoice(voices: SpeechSynthesisVoice[]) {
   return [...voices].sort((left, right) => scoreVoice(right) - scoreVoice(left))[0]
 }
 
-function getElevenLabsConfig() {
-  const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY?.trim()
-  const voiceId =
-    import.meta.env.VITE_ELEVENLABS_VOICE_ID?.trim() || DEFAULT_ELEVENLABS_VOICE_ID
-  const modelId =
-    import.meta.env.VITE_ELEVENLABS_MODEL_ID?.trim() || DEFAULT_ELEVENLABS_MODEL_ID
+function getSpeechEndpoint() {
+  const baseUrl = import.meta.env.VITE_ELEVENLABS_SPEECH_ENDPOINT?.trim()
 
-  if (!apiKey) {
+  if (!baseUrl) {
     return null
   }
 
-  return { apiKey, voiceId, modelId }
+  return new URL(SPEECH_ENDPOINT_PATH, baseUrl).toString()
 }
 
-async function speakWithElevenLabs(text: string) {
-  const config = getElevenLabsConfig()
+async function speakWithGeneratedVoice(text: string) {
+  const endpoint = getSpeechEndpoint()
 
-  if (!config) {
+  if (!endpoint) {
     return false
   }
 
-  const response = await fetch(`${ELEVENLABS_API_URL}/${config.voiceId}`, {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Accept: "audio/mpeg",
       "Content-Type": "application/json",
-      "xi-api-key": config.apiKey,
     },
     body: JSON.stringify({
       text,
-      model_id: config.modelId,
-      voice_settings: {
-        similarity_boost: 0.8,
-        stability: 0.45,
-      },
     }),
   })
 
   if (!response.ok) {
     const details = await response.text()
-    throw new Error(details || "ElevenLabs speech request failed.")
+    throw new Error(details || "Generated speech request failed.")
   }
 
   const audioBlob = await response.blob()
@@ -135,7 +123,7 @@ function createBrowserSpeechAdapter(): SpeechAdapter {
       return detectVoiceCapability()
     },
     speak(text: string) {
-      void speakWithElevenLabs(text).catch((error: unknown) => {
+      void speakWithGeneratedVoice(text).catch((error: unknown) => {
         console.warn("Falling back to browser speech playback.", error)
         speakWithBrowserVoice(text)
       })
